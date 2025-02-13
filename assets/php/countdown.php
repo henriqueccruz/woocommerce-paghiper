@@ -75,13 +75,20 @@ for ($i = 0; $i <= $frames; $i++) {
 
     $frame->drawImage($draw);
     $frame->setImageDelay($delay);
+    
     $imagick->addImage($frame);
 }
 
-// Loop infinito **somente nos dois últimos frames** (Expirado + Frame vazio)
-
-// Otimiza o GIF e salva em cache
+// Remove frames idênticos
 $imagick->optimizeImageLayers();
+
+// Reduz a quantidade de cores (economiza bytes)
+$imagick->quantizeImage(16, Imagick::COLORSPACE_RGB, 0, false, false);
+
+// Usa compactação Lossy (reduz ainda mais o tamanho)
+$imagick->setImageCompressionQuality(60);
+
+// Salva o GIF otimizado e exibe
 $imagick->writeImages($cache_file, true);
 
 // Exibe o GIF gerado
