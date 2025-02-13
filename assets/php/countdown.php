@@ -31,7 +31,7 @@ if (file_exists($cache_file)) {
 // Criar o GIF dinamicamente
 $width = 600;
 $height = 200;
-$frames = !$expired ? $remaining_time + 6 : 1; // +2 para adicionar "Expirado" piscando ao final
+$frames = !$expired ? $remaining_time + 1 : 1;
 $delay = 100; // 1 segundo por frame (100 = 1s no GIF)
 
 $imagick = new Imagick();
@@ -39,12 +39,14 @@ $imagick->setFormat('gif');
 
 for ($i = 0; $i <= $frames; $i++) {
     $frame = new Imagick();
+
     $frame->newImage($width, $height, new ImagickPixel('white'));
     $frame->setImageFormat('gif');
+    $frame->setImageDispose(Imagick::DISPOSE_BACKGROUND);
     $draw = new ImagickDraw();
+    $frame->setImageIterations(1);
 
-    if (!$expired && $i < $frames - 5) {
-        $frame->setImageIterations(1);
+    if (!$expired && $i < $frames) {
         // Contagem regressiva normal
         $text = gmdate('H:i:s', max(0, $remaining_time - $i));
 
@@ -57,9 +59,11 @@ for ($i = 0; $i <= $frames; $i++) {
         $draw->annotation(440, 150, "SEGUNDOS");
 
     } else {
-        $frame->setImageIterations(0);
+        if($expired) {
+            $frame->setImageIterations(0);
+        }
         // Alternância entre "Expirado" e frame vazio nos últimos dois frames
-        $text = ($i % 2 == 0) ? 'Expirado' : '';
+        $text = ($i % 2 == 0) ? '' : 'Expirado';
     }
 
     // Texto centralizado
