@@ -49,7 +49,7 @@ function wc_paghiper_get_paghiper_url_by_order_id( $order_id ) {
  * @return string
  */
 function wc_paghiper_initialize_log( $debug_settings ) {
-	return ( 'yes' == $debug_settings ) ? ((function_exists( 'wc_get_logger' )) ? wc_get_logger() : new WC_Logger()) : NULL;
+	return ( 'yes' == $debug_settings ) ? (new WC_Logger()) : false;
 }
 
 /**
@@ -57,9 +57,17 @@ function wc_paghiper_initialize_log( $debug_settings ) {
  *
  * @return object
  */
-function wc_paghiper_add_log( $log, $message ) {
-	$gateway_id = 'paghiper';
-	return ($log && $log->add( $gateway_id, $message )) ? TRUE : FALSE;
+function wc_paghiper_add_log( $logger, $message, $context = [], $level = WC_Log_Levels::INFO ) {
+
+	if($logger) {
+		$context['source'] = 'paghiper';
+		$context['plugin_version'] = WC_Paghiper::VERSION;
+		if($logger->log( $level, $message, $context )) {
+			return true;
+		}
+	}
+
+	return false;
 }
 
 /**
@@ -82,20 +90,12 @@ function wc_paghiper_add_workdays( $due_date, $order, $format, $workday_settings
 			$paghiper_data = (is_array($paghiper_data_query)) ? $paghiper_data_query : [];
 			$paghiper_data['order_transaction_due_date'] = $due_date->format( 'Y-m-d' );
 
-			$update = $order->update_meta_data( 'wc_paghiper_data', $paghiper_data );
-			$save 	= $order->save();
+			$order->update_meta_data( 'wc_paghiper_data', $paghiper_data );
+			$order->add_order_note( sprintf( __( 'Data de vencimento ajustada para %s', 'woo_paghiper' ), $due_date->format('d/m/Y') ) );
+			$order->save();
 			
 			if(function_exists('update_meta_cache'))
 				update_meta_cache( 'shop_order', $order->get_id() );
-
-			if($update && $save) {
-				$order->add_order_note( sprintf( __( 'Data de vencimento ajustada para %s', 'woo_paghiper' ), $due_date->format('d/m/Y') ) );
-			} else {
-				$log = wc_paghiper_initialize_log( 'yes' );
-				wc_paghiper_add_log( $log, sprintf( 'Pedido #%s: Erro ao salvar data de vencimento: .', $order->get_id(), var_export($update, TRUE) ) );
-
-				$order->add_order_note( sprintf( __( 'Data de vencimento deveria ser ajustada para %s mas houve um erro ao salvar a nova data.', 'woo_paghiper' ), $due_date->format('d/m/Y') ) );
-			}
 		}
 
 	}
@@ -140,4 +140,17 @@ function wc_paghiper_check_sdk_includes( $log = false ) {
 	}
 
 	return true;
+}
+
+/**
+ * Includes the SDK autoload file
+ * 
+ * @return boolean
+ */
+
+function wc_paghiper_initialize_sdk( $log = false ) {
+
+	require_once WC_Paghiper::get_plugin_path() . 'includes/paghiper-php-sdk/build/vendor/scoper-autoload.php';
+	return wc_paghiper_check_sdk_includes( $log );
+
 }
