@@ -12,7 +12,7 @@
  * Text Domain: 			woo-boleto-paghiper
  * Domain Path: 			/languages/
  * WC requires at least: 	4.0.0
- * WC tested up to: 		9.8.5
+ * WC tested up to: 		9.9.5
  * Requires Plugins: woocommerce
  */	
 
