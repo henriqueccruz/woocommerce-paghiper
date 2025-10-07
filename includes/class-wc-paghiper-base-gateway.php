@@ -2,18 +2,31 @@
 
 class WC_Paghiper_Base_Gateway {
 
-	private $log;
-	private $timezone;
+	private $gateway,
+		$order,
+		$days_due_date,
+		$skip_non_workdays,
+		$set_status_when_waiting,
+		$due_date_mode,
+		$due_date_value,
+		$isPIX = false,
+		$log,
+		$timezone;
 
 	public function __construct($gateway) {
 
 		$this->gateway = $gateway;
 		$this->order = null;
 
+		$this->isPIX = $this->isPIX ? true : false;
+
 		// Define as variáveis que vamos usar e popula com os dados de configuração
 		$this->days_due_date 			= $this->gateway->get_option( 'days_due_date' );
 		$this->skip_non_workdays		= $this->gateway->get_option( 'skip_non_workdays' );
 		$this->set_status_when_waiting 	= $this->gateway->get_option( 'set_status_when_waiting' );
+
+		$this->due_date_mode		= $this->gateway->get_option( 'due_date_mode', ($this->isPIX ? 'minutes' : 'days') );
+		$this->due_date_value		= $this->gateway->get_option( 'due_date_value', ($this->isPIX ? 30 : 3) );
 
 		// Ativa os logs
 		$this->log = wc_paghiper_initialize_log( $this->gateway->get_option( 'debug' ) );
@@ -47,7 +60,7 @@ class WC_Paghiper_Base_Gateway {
      * @return string 
      */ 
     public function currency_not_supported_message() { 
-		echo sprintf('<div class="error notice"><p><strong>%s: </strong>%s <a href="%s">%s</a></p></div>', __(($this->gateway->id == 'paghiper_pix') ? 'PIX Paghiper' : 'Boleto Paghiper'), __('A moeda-padrão do seu Woocommerce não é o R$. Ajuste suas configurações aqui:'), admin_url('admin.php?page=wc-settings&tab=general'), __('Configurações de moeda'));
+		echo sprintf('<div class="error notice"><p><strong>%s: </strong>%s <a href="%s">%s</a></p></div>', __($this->isPIX ? 'PIX Paghiper' : 'Boleto Paghiper'), __('A moeda-padrão do seu Woocommerce não é o R$. Ajuste suas configurações aqui:'), admin_url('admin.php?page=wc-settings&tab=general'), __('Configurações de moeda'));
 	}
 
 	/**
@@ -139,9 +152,9 @@ class WC_Paghiper_Base_Gateway {
 	public function init_form_fields() {
 		$shop_name = get_bloginfo( 'name' );
 
-		$default_label 			= ($this->gateway->id == 'paghiper_pix') ? 'Ativar PIX PagHiper' : 'Ativar Boleto PagHiper';
-		$default_title 			= ($this->gateway->id == 'paghiper_pix') ? 'PIX' : 'Boleto Bancário';
-		$default_description	= ($this->gateway->id == 'paghiper_pix') ? 'Pague de maneira rápida e segura com PIX' : 'Pagar com Boleto Bancário';
+		$default_label 			= $this->isPIX ? 'Ativar PIX PagHiper' : 'Ativar Boleto PagHiper';
+		$default_title 			= $this->isPIX ? 'PIX' : 'Boleto Bancário';
+		$default_description	= $this->isPIX ? 'Pague de maneira rápida e segura com PIX' : 'Pagar com Boleto Bancário';
 
 		$first = array(
 			'enabled' => array(
@@ -165,7 +178,7 @@ class WC_Paghiper_Base_Gateway {
 				'default'     => __( $default_description, 'woo-boleto-paghiper' )
 			),
 			'paghiper_details' => array(
-				'title' => __( 'Configurações do PagHiper '.(($this->gateway->id == 'paghiper_pix') ? 'PIX' : 'Boleto bancário'), 'woo-boleto-paghiper' ),
+				'title' => __( 'Configurações do PagHiper '.($this->isPIX ? 'PIX' : 'Boleto bancário'), 'woo-boleto-paghiper' ),
 				'type'  => 'title'
 			),
 			'api_key' => array(
@@ -182,22 +195,48 @@ class WC_Paghiper_Base_Gateway {
 			'days_due_date' => array(
 				'title'       => __( 'Dias corridos para o vencimento', 'woo-boleto-paghiper' ),
 				'type'        => 'number',
-				'description' => __( 'Número de dias para calcular a data de vencimento do '.(($this->gateway->id == 'paghiper_pix') ? 'PIX' : 'boleto').'. Caso a data de vencimento não seja útil, o sistema bancário considera o dia útil seguinte como data de vencimento.', 'woo-boleto-paghiper' ),
+				'description' => __( 'Número de dias para calcular a data de vencimento do '.($this->isPIX ? 'PIX' : 'boleto').'. Caso a data de vencimento não seja útil, o sistema bancário considera o dia útil seguinte como data de vencimento.', 'woo-boleto-paghiper' ),
 				'desc_tip'    => true,
 				'default'     => 2
 			),
+			/*'due_date_config' => array(
+				'type'        => 'wc_paghiper_custom_html',
+				'class'       => array( 'form-row-wide', 'minutes_due_date-container' ),
+				'custom_html' => $this->get_expiration_form_fields($this->gateway),
+			),*/
+
+
+			$this->form_fields['due_date_options'] = array(
+				'title' 	=> __( 'Vencimento do PIX', 'woocommerce-paghiper' ),
+				'type'  	=> 'due_date_selector',
+				'class'		=> array( 'form-row-wide', 'minutes_due_date-container' ),
+			),
+
+			$this->form_fields['due_date_mode'] = array(
+				'type'		=> 'hidden',
+				'default' 	=> 'days', // 'days' ou 'minutes'
+			),
+
+			$this->form_fields['due_date_value'] = array(
+				'type'    	=> 'hidden',
+				'default' 	=> ($this->isPIX ? 30 : 3),
+			),
+
+
+
+
 			'open_after_day_due' => array(
-				'title'       => __( 'Dias de tolerância para pagto. do '.(($this->gateway->id == 'paghiper_pix') ? 'PIX' : 'boleto'), 'woo-boleto-paghiper' ),
+				'title'       => __( 'Dias de tolerância para pagto. do '.($this->isPIX ? 'PIX' : 'boleto'), 'woo-boleto-paghiper' ),
 				'type'        => 'number',
-				'description' => __( 'Ao configurar este item, será possível pagar o '.(($this->gateway->id == 'paghiper_pix') ? 'PIX' : 'boleto').' por uma quantidade de dias após o vencimento. O mínimo é de 5 dias e máximo de 30 dias.', 'woo-boleto-paghiper' ),
+				'description' => __( 'Ao configurar este item, será possível pagar o '.($this->isPIX ? 'PIX' : 'boleto').' por uma quantidade de dias após o vencimento. O mínimo é de 5 dias e máximo de 30 dias.', 'woo-boleto-paghiper' ),
 				'desc_tip'    => true,
 				'default'     => 0
 			),
 			'skip_non_workdays' => array(
-				'title'       => __( 'Ajustar data de vencimento dos '.(($this->gateway->id == 'paghiper_pix') ? 'PIX' : 'boleto').' para dias úteis', 'woo-boleto-paghiper' ),
+				'title'       => __( 'Ajustar data de vencimento dos '.($this->isPIX ? 'PIX' : 'boleto').' para dias úteis', 'woo-boleto-paghiper' ),
 				'type'    	  => 'checkbox',
 				'label'   	  => __( 'Ativar/Desativar', 'woo-boleto-paghiper' ),
-				'description' => __( 'Ative esta opção para evitar '.(($this->gateway->id == 'paghiper_pix') ? 'PIX' : 'boleto').' com vencimento aos sábados ou domingos.', 'woo-boleto-paghiper' ),
+				'description' => __( 'Ative esta opção para evitar '.($this->isPIX ? 'PIX' : 'boleto').' com vencimento aos sábados ou domingos.', 'woo-boleto-paghiper' ),
 				'desc_tip'    => true,
 				'default' 	  => 'yes'
 			)
@@ -215,27 +254,27 @@ class WC_Paghiper_Base_Gateway {
 				'default' => 'yes'
 			),
 			'fixed_description' => array(
-				'title'   => __( 'Exibir frase customizada no '.(($this->gateway->id == 'paghiper_pix') ? 'PIX' : 'boleto').'?', 'woo-boleto-paghiper' ),
+				'title'   => __( 'Exibir frase customizada no '.($this->isPIX ? 'PIX' : 'boleto').'?', 'woo-boleto-paghiper' ),
 				'type'    => 'checkbox',
 				'label'   => __( 'Ativar/Desativar', 'woo-boleto-paghiper' ),
 				'default' => 'yes'
 			),
 			'set_status_when_waiting' => array(
-				'title'	  => __('Mudar status após emissão do '.(($this->gateway->id == 'paghiper_pix') ? 'PIX' : 'boleto').' para:', 'woo-boleto-paghiper'),
+				'title'	  => __('Mudar status após emissão do '.($this->isPIX ? 'PIX' : 'boleto').' para:', 'woo-boleto-paghiper'),
 				'type'	  => 'select',
 				'options' => $this->get_available_status(),
 				'default'  => $this->get_available_status('on-hold'),
 
 			),
 			'set_status_when_paid' => array(
-				'title'	  => __('Mudar status após pagamento do '.(($this->gateway->id == 'paghiper_pix') ? 'PIX' : 'boleto').' para:', 'woo-boleto-paghiper'),
+				'title'	  => __('Mudar status após pagamento do '.($this->isPIX ? 'PIX' : 'boleto').' para:', 'woo-boleto-paghiper'),
 				'type'	  => 'select',
 				'options' => $this->get_available_status(),
 				'default'  => $this->get_available_status('processing'),
 
 			),
 			'set_status_when_cancelled' => array(
-				'title'	  => __('Mudar status após cancelamento do '.(($this->gateway->id == 'paghiper_pix') ? 'PIX' : 'boleto').' para:', 'woo-boleto-paghiper'),
+				'title'	  => __('Mudar status após cancelamento do '.($this->isPIX ? 'PIX' : 'boleto').' para:', 'woo-boleto-paghiper'),
 				'type'	  => 'select',
 				'options' => $this->get_available_status(),
 				'default'  => $this->get_available_status('cancelled'),
@@ -250,11 +289,109 @@ class WC_Paghiper_Base_Gateway {
 			),
 		);
 
-		if($this->gateway->id == 'paghiper_pix') {
+		if($this->isPIX) {
 			unset($first['skip_non_workdays'], $first['open_after_day_due']);
 		}
 
 		return array_merge( $first, $last );
+	}
+
+	/**
+	 * Generate the HTML for our dynamic due date selector.
+	 */
+	public function generate_due_date_selector_html( $key, $data ) {
+		
+		// Get saved values from database to populate initial state
+		$mode  = $this->due_date_mode;
+		$value = $this->due_date_value;
+
+		?>
+		<tr valign="top">
+			<th scope="row" class="titledesc">
+				<label for="<?php echo esc_attr( $key ); ?>"><?php echo esc_html( $data['title'] ); ?></label>
+			</th>
+			<td class="forminp">
+				<div id="paghiper-due-date-container">
+
+					<div class="mode-switcher">
+						<label>Dias</label>
+						<label class="switch">
+							<input type="checkbox" id="due-date-mode-toggle" <?php checked($mode, 'minutes'); ?>>
+							<span class="slider round"></span>
+						</label>
+						<label>Cronômetro (Dias/Horas/Minutos)</label>
+					</div>
+
+					<div id="days-mode-section" class="<?php echo $mode === 'days' ? 'active' : ''; ?>">
+						<div class="days-input-wrapper">
+							<span class="chevron-control" data-action="increment">
+								<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><path d="m12 6.586-8.707 8.707 1.414 1.414L12 9.414l7.293 7.293 1.414-1.414L12 6.586z"/></svg>
+							</span>
+							<div class="days-display" data-value="<?php echo esc_attr($value); ?>">0</div>
+							<span class="chevron-control" data-action="decrement">
+								<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><path d="M12 17.414 3.293 8.707l1.414-1.414L12 14.586l7.293-7.293 1.414 1.414L12 17.414z"/></svg>
+							</span>
+						</div>
+					</div>
+
+					<div id="minutes-mode-section" class="<?php echo $mode === 'minutes' ? 'active' : ''; ?>">
+						<div class="cronometro-wrapper">
+							<div class="time-unit">
+								<span class="chevron-control" data-action="increment">
+									<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><path d="m12 6.586-8.707 8.707 1.414 1.414L12 9.414l7.293 7.293 1.414-1.414L12 6.586z"/></svg>
+								</span>
+								<div class="days-display">
+									<span class="time-display" id="cron-days">0</span>
+									<label>Dias</label>
+								</div>
+								<span class="chevron-control" data-action="decrement">
+									<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><path d="M12 17.414 3.293 8.707l1.414-1.414L12 14.586l7.293-7.293 1.414 1.414L12 17.414z"/></svg>
+								</span>
+							</div>
+							<span class="time-separator">:</span>
+							<div class="time-unit">
+								<span class="chevron-control" data-action="increment">
+									<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><path d="m12 6.586-8.707 8.707 1.414 1.414L12 9.414l7.293 7.293 1.414-1.414L12 6.586z"/></svg>
+								</span>
+								<div class="hours-display">
+									<span class="time-display" id="cron-hours">0</span>
+									<label>Horas</label>
+								</div>
+								<span class="chevron-control" data-action="decrement">
+									<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><path d="M12 17.414 3.293 8.707l1.414-1.414L12 14.586l7.293-7.293 1.414 1.414L12 17.414z"/></svg>
+								</span>
+							</div>
+							<span class="time-separator">:</span>
+							<div class="time-unit">
+								<span class="chevron-control" data-action="increment">
+									<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><path d="m12 6.586-8.707 8.707 1.414 1.414L12 9.414l7.293 7.293 1.414-1.414L12 6.586z"/></svg>
+								</span>
+								<div class="minutes-display">
+									<span class="time-display" id="cron-minutes">0</span>
+									<label>Minutos</label>
+								</div>
+								<span class="chevron-control" data-action="decrement">
+									<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><path d="M12 17.414 3.293 8.707l1.414-1.414L12 14.586l7.293-7.293 1.414 1.414L12 17.414z"/></svg>
+								</span>
+							</div>
+						</div>
+					</div>
+
+				</div>
+				<p class="description">Escolha entre um vencimento fixo em dias ou um cronômetro regressivo.</p>
+			</td>
+		</tr>
+		<?php
+	}
+
+	/**
+	 * Admin Panel Due Date Options.
+	 *
+	 * @return string Admin form fieldset.
+	 */
+	private function get_expiration_form_fields( $gateway ){
+		require_once 'views/html-admin-due-date-settings.php';
+		return wc_paghiper_generate_due_date_form_fields( $gateway );
 	}
 
 	/**
@@ -521,7 +658,7 @@ class WC_Paghiper_Base_Gateway {
 
 			// Mark as on-hold (we're awaiting the ticket).
 			$waiting_status = (!empty($this->set_status_when_waiting)) ? $this->set_status_when_waiting : 'on-hold';
-			$order->update_status( $waiting_status, __( 'PagHiper: '. (($this->gateway->id == 'paghiper_pix') ? 'PIX' : 'Boleto') .' gerado e enviado por e-mail.', 'woo-boleto-paghiper' ) );
+			$order->update_status( $waiting_status, __( 'PagHiper: '. ($this->isPIX ? 'PIX' : 'Boleto') .' gerado e enviado por e-mail.', 'woo-boleto-paghiper' ) );
 
 		} else {
 
@@ -536,13 +673,13 @@ class WC_Paghiper_Base_Gateway {
 					$this->log, 
 					sprintf( 'Pedido #%s: Não foi possível gerar o %s. Detalhes: %s', 
 						$order_id, 
-						(($this->gateway->id == 'paghiper_pix') ? 'PIX' : 'boleto'), 
+						($this->isPIX ? 'PIX' : 'boleto'), 
 						var_export($transaction, true) 
 					) 
 				);
 			}
 			
-			wc_add_notice( 'Não foi possível gerar o seu '. (($this->gateway->id == 'paghiper_pix') ? 'PIX' : 'boleto'), 'error' );
+			wc_add_notice( 'Não foi possível gerar o seu '. ($this->isPIX ? 'PIX' : 'boleto'), 'error' );
 			return;
 
 		}
@@ -583,7 +720,7 @@ class WC_Paghiper_Base_Gateway {
 				$this->log, 
 				sprintf( 'Pedido #%s: Dados iniciais para o %s preparados. Detalhes: %s', 
 					$order->get_id(), 
-					(($this->gateway->id == 'paghiper_pix') ? 'PIX' : 'boleto'), 
+					($this->isPIX ? 'PIX' : 'boleto'), 
 					var_export($data, true) 
 				) 
 			);

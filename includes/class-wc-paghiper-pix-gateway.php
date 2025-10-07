@@ -78,5 +78,9 @@ class WC_Paghiper_Pix_Gateway extends WC_Payment_Gateway {
 	public function process_payment( $order_id, $is_frontend = true ) {
 		return $this->paghiper_gateway->process_payment( $order_id, $is_frontend = true );
 	}
+	
+	public function generate_due_date_selector_html( $key, $data ) {
+		return $this->paghiper_gateway->generate_due_date_selector_html( $key, $data );
+	}
 
 }
