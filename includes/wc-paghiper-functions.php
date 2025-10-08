@@ -8,7 +8,9 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * @return string
  */
-function wc_paghiper_assets_url( $asset ) {
+function wc_paghiper_assets_url( $asset = NULL ) {
+
+	$asset = ($asset) ? trim($asset, '/') : '';
 
 	if(!function_exists('wc_paghiper_get_dev_asset_url')) {
 		// In production, load from plugin assets
