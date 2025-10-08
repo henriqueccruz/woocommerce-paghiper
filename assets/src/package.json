@@ -32,13 +32,17 @@
         "defaults"
     ],
     "scripts": {
-        "dev": "vite",
-        "build": "vite build",
+        "dev": "npm run dev:assets & npm run dev:blocks",
+        "build": "npm run build:assets && npm run build:blocks",
         "preview": "vite preview",
         "i18n": "npm run i18n:build",
         "i18n:build": "npm run i18n:pot && ./bin/build_i18n.sh",
         "i18n:pot": "wp i18n make-pot --exclude=\"node_modules/,languages/,assets/\" --headers='{\"Report-Msgid-Bugs-To\":\"https://github.com/henriqueccruz/woocommerce-paghiper/issues\", \"language-team\":\"LANGUAGE <EMAIL@ADDRESS>\"}' . languages/woo-boleto-paghiper.pot",
-        "i18n:json": "wp i18n make-json languages --no-purge"
+        "i18n:json": "wp i18n make-json languages --no-purge",
+        "dev:blocks": "vite build --config vite.blocks.config.js --mode development --watch",
+        "build:blocks": "vite build --config vite.blocks.config.js --mode production",
+        "dev:assets": "vite build --mode development --watch",
+        "build:assets": "vite build --mode production"
     },
     "type": "module"
 }

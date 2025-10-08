@@ -134,6 +134,13 @@ class WC_Paghiper {
 	}
 
 	/**
+	 * Get plugin URL.
+	 */
+	public static function get_plugin_url() {
+		return plugin_dir_url( __FILE__ );
+	}
+
+	/**
 	 * Load the plugin text domain for translation.
 	 */
 	public function load_plugin_textdomain() {
