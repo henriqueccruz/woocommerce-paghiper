@@ -9,13 +9,15 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @return string
  */
 function wc_paghiper_assets_url( $asset ) {
-    // Verifica se está em desenvolvimento e o servidor Vite está rodando
-    if ( function_exists('wc_paghiper_get_dev_asset_url') && defined( 'WP_DEBUG' ) && WP_DEBUG && @fsockopen( 'wordpress.sandbox.local', 5173 ) ) {
+
+	if(!function_exists('wc_paghiper_get_dev_asset_url')) {
+		// In production, load from plugin assets
+		return plugin_dir_url( dirname( __FILE__ ) ) . 'assets/dist/'.$asset;
+	} elseif ( defined( 'WP_DEBUG' ) && WP_DEBUG && @fsockopen( 'wordpress.sandbox.local', 5173 ) ) {
+		// When in development, load from Vite dev server
         return wc_paghiper_get_dev_asset_url( $asset );
     }
 
-    // Em produção, usa os arquivos compilados
-	return plugin_dir_url( dirname( __FILE__ ) ) . 'assets/dist/';
 }
 
 /**
