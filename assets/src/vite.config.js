@@ -55,18 +55,28 @@ export default defineConfig({
     },
     // Servidor de desenvolvimento
     server: {
+        // Configuração do servidor de desenvolvimento
+        host: 'wordpress.sandbox.local',
+        https: {
+            key: './certificates/wordpress.sandbox.local+3-key.pem',
+            cert: './certificates/wordpress.sandbox.local+3.pem'
+        },
         // Proxy para o WordPress
-        proxy: 'https://wordpress.sandbox.local',
-        // Permite HTTPS
-        https: true,
+        proxy: {
+            '^(?!/(@vite|node_modules|src))': {
+                target: 'https://wordpress.sandbox.local',
+                secure: false,
+                changeOrigin: true
+            }
+        },
         // Cors para desenvolvimento
         cors: true,
         // Hot Module Replacement
         hmr: {
             // Força WebSocket sobre HTTPS
             protocol: 'wss',
-            // Host para conexão WebSocket
-            host: 'wordpress.sandbox.local'
+            host: 'wordpress.sandbox.local',
+            clientPort: 5173
         },
         // Watchfiles adicionais
         watch: {
