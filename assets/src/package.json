@@ -13,6 +13,7 @@
         "babel-preset-env": "^1.7.0",
         "babel-preset-es2015": "^6.24.1",
         "bootstrap-scss": "^4.6.1",
+        "rollup-plugin-copy": "^3.5.0",
         "sass": "^1.93.2",
         "validation-br": "^1.5.2",
         "vite": "^5.4.20",
@@ -26,8 +27,8 @@
         "defaults"
     ],
     "scripts": {
-        "dev": "vite",
-        "build": "vite build --emptyOutDir false",
+        "dev": "vite --https --host wordpress.sandbox.local",
+        "build": "vite build",
         "preview": "vite preview",
         "i18n": "npm run i18n:build",
         "i18n:build": "npm run i18n:pot && ./bin/build_i18n.sh",

@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import viteImagemin from 'vite-plugin-imagemin';
+import { viteStaticCopy } from 'vite-plugin-static-copy';
 import { resolve } from 'path';
 
 // Mapeamento de dependências do WooCommerce
@@ -23,8 +24,9 @@ export default defineConfig({
         // Configuração de build
         rollupOptions: {
             input: {
-                'js/frontend.min': './js/frontend.js',
-                'js/backend.min': './js/backend.js',
+                'js/frontend.min': './js/interface/frontend.js',
+                'js/backend.min': './js/interface/backend.js',
+                'js/admin.min': './js/interface/admin.js',
                 'js/blocks.min': './js/blocks/woocommerce/index.js',
                 'css/frontend.min': './scss/frontend.scss',
                 'css/backend.min': './scss/backend.scss'
@@ -52,11 +54,29 @@ export default defineConfig({
     },
     // Servidor de desenvolvimento
     server: {
-        // Servir arquivos da pasta dist
-        origin: '../dist'
+        // Proxy para o WordPress
+        proxy: 'https://wordpress.sandbox.local',
+        // Permite HTTPS
+        https: true,
+        // Cors para desenvolvimento
+        cors: true,
+        // Hot Module Replacement
+        hmr: {
+            // Força WebSocket sobre HTTPS
+            protocol: 'wss',
+            // Host para conexão WebSocket
+            host: 'wordpress.sandbox.local'
+        },
+        // Watchfiles adicionais
+        watch: {
+            // Observa mudanças em arquivos PHP do plugin
+            include: [
+                '../../../**/*.php'
+            ]
+        }
     },
     plugins: [
-        // Otimização de imagens (apenas para novas imagens em src)
+        // Otimização de imagens
         viteImagemin({
             gifsicle: {
                 optimizationLevel: 3
@@ -74,6 +94,19 @@ export default defineConfig({
                     { name: 'removeEmptyAttrs', active: false }
                 ]
             }
+        }),
+        // Cópia de arquivos estáticos
+        viteStaticCopy({
+            targets: [
+                {
+                    src: 'js/libs/**/*',
+                    dest: '../dist/js/libs'
+                },
+                {
+                    src: ['fonts/*', 'php/*'],
+                    dest: '../dist'
+                }
+            ]
         })
     ],
     css: {

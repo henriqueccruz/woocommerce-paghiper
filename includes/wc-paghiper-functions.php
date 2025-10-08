@@ -8,8 +8,14 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * @return string
  */
-function wc_paghiper_assets_url() {
-	return plugin_dir_url( dirname( __FILE__ ) ) . 'assets/';
+function wc_paghiper_assets_url( $asset ) {
+    // Verifica se está em desenvolvimento e o servidor Vite está rodando
+    if ( function_exists('wc_paghiper_get_dev_asset_url') && defined( 'WP_DEBUG' ) && WP_DEBUG && @fsockopen( 'wordpress.sandbox.local', 5173 ) ) {
+        return wc_paghiper_get_dev_asset_url( $asset );
+    }
+
+    // Em produção, usa os arquivos compilados
+	return plugin_dir_url( dirname( __FILE__ ) ) . 'assets/dist/';
 }
 
 /**
