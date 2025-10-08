@@ -1,0 +1,22 @@
+{
+    "compilerOptions": {
+        "target": "ES2015",
+        "jsx": "preserve",
+        "moduleResolution": "node",
+        "allowJs": true,
+        "skipLibCheck": true,
+        "esModuleInterop": true,
+        "allowSyntheticDefaultImports": true,
+        "strict": true,
+        "forceConsistentCasingInFileNames": true,
+        "module": "esnext",
+        "resolveJsonModule": true,
+        "isolatedModules": true,
+        "baseUrl": ".",
+        "paths": {
+            "@wordpress/*": ["node_modules/@wordpress/*"]
+        }
+    },
+    "include": ["js/**/*"],
+    "exclude": ["node_modules"]
+}

@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import viteImagemin from 'vite-plugin-imagemin';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
+import react from '@vitejs/plugin-react';
 import { resolve } from 'path';
 
 // Mapeamento de dependências do WooCommerce
@@ -76,6 +77,14 @@ export default defineConfig({
         }
     },
     plugins: [
+        // Suporte a React/JSX
+        react({
+            // Tratar arquivos .js como JSX
+            include: [/\.(jsx|js)$/],
+            babel: {
+                presets: ['@babel/preset-react']
+            }
+        }),
         // Otimização de imagens
         viteImagemin({
             gifsicle: {
