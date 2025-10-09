@@ -9,94 +9,126 @@ jQuery(function ($) {
     const daysSection = $('#days-mode-section');
     const minutesSection = $('#minutes-mode-section');
 
-    // Classe para gerenciar dígitos do odômetro
+    // Classe para gerenciar a animação de um único dígito do odômetro
     class OdometerDigit {
-        constructor(value, isLast = false) {
+        constructor(initialValue) {
             this.element = $('<div class="odometer-digit">');
-            this.innerElement = $('<div class="odometer-digit-inner">');
-            this.currentValue = parseInt(value, 10);
-            this.isLast = isLast; // último dígito pode rolar infinitamente
-
-            this.element.append(this.innerElement);
-            this.updateDisplay();
-        }
-
-        updateDisplay() {
-            this.innerElement.html(`
-                <span class="odometer-digit-value">${this.currentValue}</span>
-                <span class="odometer-digit-value">${this.getNextValue(1)}</span>
-                <span class="odometer-digit-value">${this.getNextValue(-1)}</span>
-            `);
-        }
-
-        getNextValue(direction) {
-            if (this.isLast) {
-                let next = this.currentValue + direction;
-                if (next > 9) next = 0;
-                if (next < 0) next = 9;
-                return next;
+            this.currentValue = parseInt(initialValue, 10);
+            
+            // O "rotor" que contém os números de 0 a 9
+            this.rotor = $('<div class="odometer-rotor">');
+            for (let i = 0; i < 10; i++) {
+                this.rotor.append($('<div class="odometer-digit-value">').text(i));
             }
-            return this.currentValue;
+            // Adicionamos uma cópia do 0 no final para a animação de 9 -> 0
+            this.rotor.append($('<div class="odometer-digit-value">').text(0));
+
+            this.element.append(this.rotor);
+        }
+
+        initializePosition() {
+            const digitHeight = this.element.height();
+            if (digitHeight === 0) return;
+            // Define a posição inicial sem animação
+            this.rotor.css({ transition: 'none', transform: `translateY(-${this.currentValue * digitHeight}px)` });
         }
 
         setValue(newValue, direction) {
-            if (newValue === this.currentValue) return false;
+            if (newValue === this.currentValue) return;
 
-            const className = direction > 0 ? 'rolling-up' : 'rolling-down';
-            this.element.addClass(className);
-            
-            setTimeout(() => {
-                this.currentValue = newValue;
-                this.updateDisplay();
-                this.element.removeClass(className);
-            }, 200);
+            // Mede a altura a cada clique para garantir resiliência a mudanças de layout
+            const digitHeight = this.element.height();
+            if (digitHeight === 0) return; // Não anima se não tiver altura
 
-            return true;
+            const rotor = this.rotor;
+            const currentValue = this.currentValue;
+
+            // Garante que a transição está ativa para a animação
+            rotor.css({ transition: 'transform 0.4s ease-in-out' });
+
+            // Se a animação "passar pelo zero" (ex: 9 -> 0 ou 0 -> 9), faz um tratamento especial
+            if (direction > 0 && newValue < currentValue) { // Rolando para cima, ex: de 9 para 0
+                // Move para a posição "10" (que é a cópia do 0)
+                rotor.css({ transform: `translateY(-${10 * digitHeight}px)` });
+                // Após a animação, reseta para a posição 0 sem animar
+                setTimeout(() => {
+                    rotor.css({ transition: 'none', transform: `translateY(0px)` });
+                }, 400);
+            } else if (direction < 0 && newValue > currentValue) { // Rolando para baixo, ex: de 0 para 9
+                // Para animar de 0 para 9 para baixo, primeiro movemos o rotor para a posição 10 (o 0 de baixo) sem animar
+                rotor.css({ transition: 'none', transform: `translateY(-${10 * digitHeight}px)` });
+                // Força o navegador a redesenhar para aplicar o estado inicial
+                rotor[0].offsetHeight;
+                // Agora, com a transição, movemos para a posição 9
+                rotor.css({ transition: 'transform 0.4s ease-in-out', transform: `translateY(-${9 * digitHeight}px)` });
+            } else {
+                // Animação normal
+                rotor.css({ transform: `translateY(-${newValue * digitHeight}px)` });
+            }
+
+            this.currentValue = newValue;
         }
     }
 
     // Classe para gerenciar grupos de dígitos
     class OdometerDisplay {
-        constructor(element, initialValue, maxValue = 99) {
+        // Centraliza a configuração de todos os tipos de odômetros
+        static LIMITS = {
+            'boleto-days': { min: 1, max: 31, wrap: true }, // De 1 a 31, com virada
+            'pix-days':    { min: 0, max: 3,  wrap: true },
+            'hours':       { min: 0, max: 23, wrap: true },
+            'minutes':     { min: 0, max: 59, wrap: true }
+        };
+
+        constructor(element, initialValue, type) {
             this.container = $(element);
-            this.maxValue = maxValue;
-            this.value = initialValue;
+            this.config = OdometerDisplay.LIMITS[type];
+            this.value = Math.max(this.config.min, Math.min(initialValue, this.config.max)); // Garante valor inicial dentro dos limites
             this.digits = [];
             
-            // Criar wrapper
             this.wrapper = $('<div class="odometer-display">');
             this.container.html(this.wrapper);
             
-            // Criar dígitos
             const valueStr = this.value.toString().padStart(2, '0');
             for (let i = 0; i < valueStr.length; i++) {
-                const digit = new OdometerDigit(valueStr[i], i === valueStr.length - 1);
+                const digit = new OdometerDigit(valueStr[i]);
                 this.digits.push(digit);
                 this.wrapper.append(digit.element);
+                digit.initializePosition();
             }
         }
 
-        setValue(newValue, animate = true) {
+        // Apenas atualiza a parte visual
+        setValue(newValue, direction) {
             if (newValue === this.value) return;
-            
-            // Garantir limites
-            newValue = Math.max(0, Math.min(newValue, this.maxValue));
             
             const oldStr = this.value.toString().padStart(2, '0');
             const newStr = newValue.toString().padStart(2, '0');
+            const animDirection = direction !== undefined ? direction : (newValue > this.value ? 1 : -1);
             
-            // Atualizar cada dígito
             for (let i = 0; i < this.digits.length; i++) {
                 const oldDigit = parseInt(oldStr[i], 10);
                 const newDigit = parseInt(newStr[i], 10);
-                
-                if (oldDigit !== newDigit) {
-                    const direction = newValue > this.value ? 1 : -1;
-                    this.digits[i].setValue(newDigit, direction);
-                }
+                this.digits[i].setValue(newDigit, animDirection);
             }
             
             this.value = newValue;
+        }
+
+        increment() {
+            let newValue = this.value + 1;
+            if (newValue > this.config.max) {
+                newValue = this.config.wrap ? this.config.min : this.config.max;
+            }
+            this.setValue(newValue, 1);
+        }
+
+        decrement() {
+            let newValue = this.value - 1;
+            if (newValue < this.config.min) {
+                newValue = this.config.wrap ? this.config.max : this.config.min;
+            }
+            this.setValue(newValue, -1);
         }
     }
 
@@ -110,35 +142,25 @@ jQuery(function ($) {
         daysSection.toggleClass('active', !isMinutesMode);
         minutesSection.toggleClass('active', isMinutesMode);
         modeInput.val(isMinutesMode ? 'minutes' : 'days').trigger('change');
-        // Ao trocar, podemos resetar ou converter os valores
     }).trigger('change');
 
-    // --- LÓGICA DA SEÇÃO "DIAS" ---
+    // --- LÓGICA DA SEÇÃO "DIAS" (BOLETO) ---
     const initialDays = paghiper_settings.due_date_mode === 'days' ? parseInt(paghiper_settings.due_date_value, 10) : 3;
-    const daysOdometer = new OdometerDisplay(daysSection.find('.days-display'), initialDays, 3);
+    const daysOdometer = new OdometerDisplay(daysSection.find('.days-display'), initialDays, 'boleto-days');
 
     daysSection.find('.chevron-control').on('click', function() {
-        const direction = $(this).data('action') === 'increment' ? 1 : -1;
-        const newValue = Math.max(1, Math.min(3, daysOdometer.value + direction));
-        
-        if (newValue !== daysOdometer.value) {
-            daysOdometer.setValue(newValue);
-            valueInput.val(newValue).trigger('change');
+        const action = $(this).data('action');
+        if (action === 'increment') {
+            daysOdometer.increment();
+        } else {
+            daysOdometer.decrement();
         }
+        // Atualiza o input hidden correspondente
+        valueInput.val(daysOdometer.value).trigger('change');
     });
 
-    // --- LÓGICA DO CRONÔMETRO ---
-    let chronoOdometers = {
-        days: null,
-        hours: null,
-        minutes: null
-    };
-
-    const chronoLimits = {
-        days: 3,
-        hours: 23,
-        minutes: 59
-    };
+    // --- LÓGICA DO CRONÔMETRO (PIX) ---
+    let chronoOdometers = {};
 
     // Função para atualizar o valor total em minutos no input hidden
     function updateTotalMinutes() {
@@ -149,9 +171,9 @@ jQuery(function ($) {
         valueInput.val(totalMinutes).trigger('change');
     }
 
-    // Inicializa os displays do cronômetro com os valores corretos
+    // Inicializa os displays do cronômetro
     function initChronoDisplays() {
-        let initialValues = { days: 0, hours: 0, minutes: 30 }; // Default de 30 minutos
+        let initialValues = { days: 0, hours: 0, minutes: 30 };
 
         if (paghiper_settings.due_date_mode === 'minutes') {
             const totalMinutes = parseInt(paghiper_settings.due_date_value, 10);
@@ -164,43 +186,32 @@ jQuery(function ($) {
             }
         }
 
-        chronoOdometers.days = new OdometerDisplay($('#cron-days'), initialValues.days, chronoLimits.days);
-        chronoOdometers.hours = new OdometerDisplay($('#cron-hours'), initialValues.hours, chronoLimits.hours);
-        chronoOdometers.minutes = new OdometerDisplay($('#cron-minutes'), initialValues.minutes, chronoLimits.minutes);
+        chronoOdometers.days = new OdometerDisplay($('#cron-days'), initialValues.days, 'pix-days');
+        chronoOdometers.hours = new OdometerDisplay($('#cron-hours'), initialValues.hours, 'hours');
+        chronoOdometers.minutes = new OdometerDisplay($('#cron-minutes'), initialValues.minutes, 'minutes');
         
-        // Atualiza o valor inicial no input hidden
         updateTotalMinutes();
     }
 
     initChronoDisplays();
 
-    // Manipuladores para os controles do cronômetro (dias, horas, minutos)
+    // Manipuladores para os controles do cronômetro
     $('#minutes-mode-section .chevron-control').on('click', function() {
         const $this = $(this);
         const unitContainer = $this.closest('.time-unit');
+        const action = $this.data('action');
         let unit;
 
-        // Determina a unidade (dias, horas, minutos) com base no elemento pai
-        if (unitContainer.find('#cron-days').length) {
-            unit = 'days';
-        } else if (unitContainer.find('#cron-hours').length) {
-            unit = 'hours';
+        if (unitContainer.find('#cron-days').length) unit = 'days';
+        else if (unitContainer.find('#cron-hours').length) unit = 'hours';
+        else unit = 'minutes';
+
+        if (action === 'increment') {
+            chronoOdometers[unit].increment();
         } else {
-            unit = 'minutes';
+            chronoOdometers[unit].decrement();
         }
-
-        const action = $this.data('action');
-        const direction = action === 'increment' ? 1 : -1;
-        let newValue = chronoOdometers[unit].value + direction;
-
-        // Aplica os limites (0-3 para dias, 0-23 para horas, 0-59 para minutos) de forma circular
-        if (newValue < 0) {
-            newValue = chronoLimits[unit];
-        } else if (newValue > chronoLimits[unit]) {
-            newValue = 0;
-        }
-
-        chronoOdometers[unit].setValue(newValue);
+        
         updateTotalMinutes();
     });
 
