@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from '@wordpress/element';
+const { __ } = window.wp.i18n;
+const { useState, useEffect, useCallback } = window.wp.element;
 
 /**
  * @typedef {import('../stripe-utils/type-defs').StripeElementOptions} StripeElementOptions

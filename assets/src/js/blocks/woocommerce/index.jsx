@@ -1,16 +1,13 @@
-//import { __ } from '@wordpress/i18n';
-//import { useState, useEffect } from '@wordpress/element';
-//import { decodeEntities } from '@wordpress/html-entities';
-
+// WordPress dependencies via window
 const { __ } = window.wp.i18n;
 const { useState, useEffect } = window.wp.element;
 const { decodeEntities } = window.wp.htmlEntities;
 
 import { InlineTaxIdField } from './elements';
 
-//import { registerPaymentMethod } from '@woocommerce/blocks-registry';
-//import { ValidationInputError } from '@woocommerce/blocks-checkout';
-//import { getSetting } from '@woocommerce/settings';
+/*import { registerPaymentMethod } from '@woocommerce/blocks-registry';
+import { ValidationInputError } from '@woocommerce/blocks-checkout';
+import { getSetting } from '@woocommerce/settings';*/
 
 const { registerPaymentMethod } = window.wc.wcBlocksRegistry;
 const { ValidationInputError } 	= window.wc.blocksCheckout;
@@ -25,12 +22,12 @@ const Content = ( props ) => {
 
 	if (typeof wc === 'undefined' || !wc.wcBlocksRegistry) {
 		console.error('WooCommerce Blocks registry not found. Make sure WooCommerce Blocks is active and loaded.');
-		return;
+		return null;
 	}
 
 	if (typeof wc === 'undefined' || !wc.blocksCheckout) {
 		console.error('WooCommerce Blocks Checkout not found. Make sure WooCommerce Blocks is active and loaded.');
-		return;
+		return null;
 	}
 
 	const { eventRegistration, emitResponse } = props;
@@ -86,13 +83,14 @@ const Content = ( props ) => {
 
 	return (
 		<>
-			<>{decodeEntities( props.gatewayDescription || '' )}</>
+			{decodeEntities(props.gatewayDescription || '')}
 			<InlineTaxIdField 
 				gatewayName={ props.gatewayName }
 				onChange={ onChange } 
 				inputErrorComponent={ ValidationInputError }
 			/>
-		</>)
+		</>
+	);
 }
 
 const Label = ( props ) => {
@@ -125,7 +123,7 @@ const BilletLabel = ( props ) => {
 	return <PaymentMethodLabel text={ billetLabel } />
 }
 
-const PaghiperBillet = {
+/*const PaghiperBillet = {
 	name: "paghiper_billet",
 	label: <BilletLabel />,
 	content: <Content gatewayName="paghiper_billet" gatewayDescription={ billetSettings.description } />,
@@ -135,10 +133,10 @@ const PaghiperBillet = {
 	supports: {
 		features: billetSettings.supports,
 	}
-};
+};*/
 
 // Register payment methods
 if (typeof window.wc.wcBlocksRegistry !== 'undefined') {
     registerPaymentMethod(PaghiperPix);
-    registerPaymentMethod(PaghiperBillet);
+    //registerPaymentMethod(PaghiperBillet);
 }

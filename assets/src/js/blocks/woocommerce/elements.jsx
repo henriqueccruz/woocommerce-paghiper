@@ -1,5 +1,8 @@
-import { __ } from '@wordpress/i18n';
-import { useState, useEffect } from '@wordpress/element';
+/*import { __ } from '@wordpress/i18n';
+import { useState, useEffect } from '@wordpress/element';*/
+const { __ } = window.wp.i18n;
+const { useState, useEffect } = window.wp.element;
+
 import { useElementOptions } from './use-element-options';
 import { isCPF, isCNPJ } from 'validation-br';
 
@@ -61,7 +64,7 @@ export const InlineTaxIdField = ( {
                 if(fieldInput.replace(/\D/g, '').length == 11) {
                     // Valida CPF
                     if(!isCPF(fieldInput)) {
-                        setError(__('O número do seu CPF está correto.', 'woo-boleto-paghiper'));
+                        setError(__('O número do seu CPF não está correto.', 'woo-boleto-paghiper'));
                         setIsInvalid(true);
                     } else {
                         setIsComplete(true);
