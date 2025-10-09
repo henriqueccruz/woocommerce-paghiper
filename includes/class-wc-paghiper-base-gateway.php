@@ -183,13 +183,13 @@ class WC_Paghiper_Base_Gateway {
 			),
 			'api_key' => array(
 				'title'       => __( 'API Key', 'woo-boleto-paghiper' ),
-				'type'        => 'text',
+				'type'        => 'password',
 				'placeholder' => 'apk_',
 				'description' => __( 'Chave de API para integração com a PagHiper', 'woo-boleto-paghiper' ),
 			),
 			'token' => array(
 				'title'       => __( 'Token PagHiper', 'woo-boleto-paghiper' ),
-				'type'        => 'text',
+				'type'        => 'password',
 				'description' => __( 'Extremamente importante, você pode gerar seu token em nossa pagina: Painel > Ferramentas > Token.', 'woo-boleto-paghiper' ),
 			),
 			'days_due_date' => array(
