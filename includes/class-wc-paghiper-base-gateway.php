@@ -233,7 +233,7 @@ class WC_Paghiper_Base_Gateway {
 				'default'     => 0
 			),
 			'skip_non_workdays' => array(
-				'title'       => __( 'Ajustar data de vencimento dos '.($this->isPIX ? 'PIX' : 'boleto').' para dias úteis', 'woo-boleto-paghiper' ),
+				'title'       => __( 'Ajustar data de vencimento dos '.($this->isPIX ? 'PIXes' : 'boletos').' para dias úteis', 'woo-boleto-paghiper' ),
 				'type'    	  => 'checkbox',
 				'label'   	  => __( 'Ativar/Desativar', 'woo-boleto-paghiper' ),
 				'description' => __( 'Ative esta opção para evitar '.($this->isPIX ? 'PIX' : 'boleto').' com vencimento aos sábados ou domingos.', 'woo-boleto-paghiper' ),
