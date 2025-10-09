@@ -192,14 +192,14 @@ class WC_Paghiper_Base_Gateway {
 				'type'        => 'password',
 				'description' => __( 'Extremamente importante, você pode gerar seu token em nossa pagina: Painel > Ferramentas > Token.', 'woo-boleto-paghiper' ),
 			),
-			'days_due_date' => array(
+			/*'days_due_date' => array(
 				'title'       => __( 'Dias corridos para o vencimento', 'woo-boleto-paghiper' ),
 				'type'        => 'number',
 				'description' => __( 'Número de dias para calcular a data de vencimento do '.($this->isPIX ? 'PIX' : 'boleto').'. Caso a data de vencimento não seja útil, o sistema bancário considera o dia útil seguinte como data de vencimento.', 'woo-boleto-paghiper' ),
 				'desc_tip'    => true,
 				'default'     => 2
 			),
-			/*'due_date_config' => array(
+			'due_date_config' => array(
 				'type'        => 'wc_paghiper_custom_html',
 				'class'       => array( 'form-row-wide', 'minutes_due_date-container' ),
 				'custom_html' => $this->get_expiration_form_fields($this->gateway),
