@@ -18,24 +18,38 @@ final class WC_Paghiper_Billet_Gateway_Blocks_Support extends AbstractPaymentMet
 		return ! empty( $this->settings[ 'enabled' ] ) && 'yes' === $this->settings[ 'enabled' ];
 	}
 
-	/*public function get_payment_method_script_handles() {
+	public function get_payment_method_script_handles() {
+
+		$script_path       = wc_paghiper_assets_url('/js/blocks.min.js');
+		$script_asset_path = WC_Paghiper::get_plugin_path() . 'includes/integrations/woocommerce-blocks/blocks.asset.php';
+		$script_asset      = file_exists( $script_asset_path )
+			? require( $script_asset_path )
+			: array(
+				'dependencies' => [
+					'react',
+					'wp-blocks',
+					'wp-element',
+					'wp-i18n',
+					'wp-block-editor',
+					'wc-settings',
+					'wc-blocks-registry',
+					'wc-blocks-checkout'
+				],
+				'version'      => '1.2'
+			);
+		$script_url        = $script_path;
 
 		wp_register_script(
-			'wc-paghiper-billet-blocks-integration',
-			plugin_dir_url( __DIR__ ) . '/woocommerce-blocks/assets/js/build/paghiper-billet.js',
-			array(
-				'wc-blocks-registry',
-				'wc-settings',
-				'wp-element',
-				'wp-html-entities',
-			),
-			null,
+			'wc-paghiper-blocks',
+			$script_url,
+			$script_asset[ 'dependencies' ],
+			$script_asset[ 'version' ],
 			true
 		);
 
-		return array( 'wc-paghiper-billet-blocks-integration' );
+		return [ 'wc-paghiper-blocks' ];
 
-	}*/
+	}
 
 	public function get_payment_method_data() {
 		return [
