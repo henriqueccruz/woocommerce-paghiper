@@ -18,7 +18,7 @@ class WC_Paghiper_Base_Gateway {
 		$this->gateway = $gateway;
 		$this->order = null;
 
-		$this->isPIX = $this->isPIX ? true : false;
+		$this->isPIX = ($this->gateway->id === 'paghiper_pix');
 
 		// Define as variáveis que vamos usar e popula com os dados de configuração
 		$this->days_due_date 			= $this->gateway->get_option( 'days_due_date' );
