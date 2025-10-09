@@ -60,6 +60,7 @@ class WC_Paghiper {
 
 			// Admin includes.
 			if ( is_admin() ) {
+				$this->backend_includes();
 				$this->admin_includes();
 			}
 
@@ -168,6 +169,13 @@ class WC_Paghiper {
 
 	/**
 	 * Includes.
+	 */
+	private function backend_includes() {
+		require_once 'includes/class-wc-paghiper-backend.php';
+	}
+
+	/**
+	 * Admin includes.
 	 */
 	private function admin_includes() {
 		require_once 'includes/class-wc-paghiper-admin.php';
