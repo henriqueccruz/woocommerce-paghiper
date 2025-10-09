@@ -2,19 +2,21 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import viteImagemin from 'vite-plugin-imagemin';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
+import wordPressAssetPlugin from './plugins/wordpress-asset.js';
 
+// Configurações de módulos externos do WordPress e WooCommerce
 const externalDeps = {
     '@woocommerce/blocks-registry'  : 'window.wc.wcBlocksRegistry',
-	'@woocommerce/settings'       	: 'window.wc.wcSettings',
-	'@woocommerce/blocks-checkout'  : 'window.wc.blocksCheckout',
-	'@wordpress/element'            : 'wp.element',
-	'@wordpress/i18n'               : 'wp.i18n',
-	'@wordpress/html-entities'      : 'wp.htmlEntities',
-	'@wordpress/blocks'             : 'wp.blocks',
-	'@wordpress/block-editor'       : 'wp.blockEditor',
-	'jquery'                        : 'jQuery',
-	'wp'                            : 'wp'
-}
+    '@woocommerce/settings'         : 'window.wc.wcSettings',
+    '@woocommerce/blocks-checkout'  : 'window.wc.blocksCheckout',
+    '@wordpress/element'            : 'wp.element',
+    '@wordpress/i18n'               : 'wp.i18n',
+    '@wordpress/html-entities'      : 'wp.htmlEntities',
+    '@wordpress/blocks'             : 'wp.blocks',
+    '@wordpress/block-editor'       : 'wp.blockEditor',
+    'jquery'                        : 'jQuery',
+    'wp'                            : 'wp'
+};
 
 // Lista de entradas para compilar
 const entries = {
@@ -45,11 +47,14 @@ export default defineConfig(({ command, mode }) => {
                 external: Object.keys(externalDeps),
                 output: {
                     format: 'es',
-                    globals: externalDeps,
                     entryFileNames: '[name].js',
-                    assetFileNames: '[name][extname]'
+                    assetFileNames: '[name][extname]',
+                    globals: externalDeps
                 }
             }
+        },
+        optimizeDeps: {
+            exclude: Object.keys(externalDeps)
         },
         ...(isDevelopment && !isBuild ? {
             server: {
@@ -79,6 +84,7 @@ export default defineConfig(({ command, mode }) => {
         } : {}),
         plugins: [
             react(),
+            wordPressAssetPlugin(),
             {
                 name: 'wrap-in-iife',
                 generateBundle(options, bundle) {
@@ -122,7 +128,6 @@ export default defineConfig(({ command, mode }) => {
                 }
             })
         ],
-
         css: {
             preprocessorOptions: {
                 scss: {
