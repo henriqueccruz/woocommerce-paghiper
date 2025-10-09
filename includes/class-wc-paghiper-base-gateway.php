@@ -253,12 +253,6 @@ class WC_Paghiper_Base_Gateway {
 				'label'   => __( 'O plug-in subtrai os itens comprados no pedido por padrão. Essa opção os incrementa de volta, caso o pedido seja cancelado. Ativar/Desativar', 'woo-boleto-paghiper' ),
 				'default' => 'yes'
 			),
-			'fixed_description' => array(
-				'title'   => __( 'Exibir frase customizada no '.($this->isPIX ? 'PIX' : 'boleto').'?', 'woo-boleto-paghiper' ),
-				'type'    => 'checkbox',
-				'label'   => __( 'Ativar/Desativar', 'woo-boleto-paghiper' ),
-				'default' => 'yes'
-			),
 			'set_status_when_waiting' => array(
 				'title'	  => __('Mudar status após emissão do '.($this->isPIX ? 'PIX' : 'boleto').' para:', 'woo-boleto-paghiper'),
 				'type'	  => 'select',
