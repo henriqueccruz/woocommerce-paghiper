@@ -739,18 +739,18 @@ class WC_Paghiper {
 	public function load_plugin_assets() {
 
 		if( !wp_script_is( 'jquery-mask', 'registered' ) ) {
-			wp_register_script( 'jquery-mask', wc_paghiper_assets_url() . 'js/libs/jquery.mask/jquery.mask.min.js', array( 'jquery' ), '1.14.16', false );
+			wp_register_script( 'jquery-mask', wc_paghiper_assets_url('js/libs/jquery.mask/jquery.mask.min.js'), array( 'jquery' ), '1.14.16', false );
 		}
 
 		if( !wp_script_is( 'paghiper-backend-js', 'registered' ) ) {
-			wp_register_script( 'paghiper-backend-js', wc_paghiper_assets_url() . 'js/backend.min.js', array( 'jquery' ),'1.1', false );
+			wp_register_script( 'paghiper-backend-js', wc_paghiper_assets_url('js/backend.min.js'), array( 'jquery' ),'1.1', false );
 		}
 
 		if( !wp_script_is( 'paghiper-frontend-js', 'registered' ) ) {
-			wp_register_script( 'paghiper-frontend-js', wc_paghiper_assets_url() . 'js/frontend.min.js',array( 'jquery' ),'1.0', false );
+			wp_register_script( 'paghiper-frontend-js', wc_paghiper_assets_url('js/frontend.min.js'), array( 'jquery' ),'1.0', false );
 		}
 
-		wp_register_style( 'paghiper-frontend-css', wc_paghiper_assets_url() . 'css/frontend.min.css','','1.0', false );
+		wp_register_style( 'paghiper-frontend-css', wc_paghiper_assets_url('css/frontend.min.css'), '', '1.0', false );
 
 		
 
