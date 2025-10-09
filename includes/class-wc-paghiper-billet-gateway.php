@@ -19,7 +19,7 @@ class WC_Paghiper_Billet_Gateway extends WC_Payment_Gateway {
 	 */
 	public function __construct() {
 		$this->id                 = 'paghiper_billet';
-		$this->icon               = apply_filters( 'woo_paghiper_billet_icon', plugins_url( 'assets/images/billet.png', plugin_dir_path( __FILE__ ) ) );
+		$this->icon               = apply_filters( 'woo_paghiper_billet_icon', wc_paghiper_assets_url( '/images/billet.png' ) );
 		$this->has_fields         = true;
 		$this->supports           = array(
 			'pre-orders',
