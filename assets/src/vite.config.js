@@ -24,6 +24,7 @@ const entries = {
     'js/backend.min':   './js/interface/backend.js',
     'js/admin.min':     './js/interface/admin.js',
     'js/blocks.min':    './js/blocks/woocommerce/index.jsx',
+    'js/hello.min':     './js/blocks/woocommerce/hello.jsx',
     'css/frontend.min': './scss/frontend.scss',
     'css/backend.min':  './scss/backend.scss',
     'css/admin.min':    './scss/admin.scss'
@@ -44,46 +45,45 @@ export default defineConfig(({ command, mode }) => {
             watch: isDevelopment && isBuild ? {} : null,
             rollupOptions: {
                 input: entries,
-                //external: Object.keys(externalDeps),
+                external: Object.keys(externalDeps),
                 output: {
                     format: 'es',
                     entryFileNames: '[name].js',
-                    assetFileNames: '[name][extname]'
+                    assetFileNames: '[name][extname]',
+                    globals: externalDeps
                 }
             }
-        },
-        optimizeDeps: {
-            exclude: Object.keys(externalDeps)
         },
         ...(isDevelopment && !isBuild ? {
             server: {
                 host: 'wordpress.sandbox.local',
+                port: 5173,
                 https: {
                     key: './certificates/wordpress.sandbox.local+3-key.pem',
                     cert: './certificates/wordpress.sandbox.local+3.pem'
                 },
-                watch: {
-                    include: ['./js/**/*.{js,jsx}', './scss/**/*.scss', './static/**/*', './images/**/*', './../../**/*.php'],
-                    exclude: ['node_modules/**', 'dist/**', './**/.DS_Store']
-                },
-                proxy: {
-                    '^(?!/(@vite|node_modules))': {
-                        target: 'https://wordpress.sandbox.local',
-                        changeOrigin: true,
-                        secure: false
-                    }
-                },
+                origin: 'https://wordpress.sandbox.local:5173',
                 cors: true,
                 hmr: {
                     protocol: 'wss',
                     host: 'wordpress.sandbox.local',
-                    clientPort: 5173
+                },
+                proxy: {
+                    '^(?!/(@vite|node_modules|src|js|scss|__vite_ping))': {
+                        target: 'https://wordpress.sandbox.local',
+                        changeOrigin: true,
+                        secure: false
+                    }
                 }
+                /*watch: {
+                    include: ['dist/**'],
+                    exclude: ['node_modules/**', '.DS_Store']
+                },*/
             },
             // Build automático no servidor de desenvolvimento
             build: {
                 outDir: '../dist',
-                emptyOutDir: false,
+                emptyOutDir: true,
                 minify: false,
                 sourcemap: true,
                 watch: {},
@@ -97,6 +97,19 @@ export default defineConfig(({ command, mode }) => {
                 }
             }
         } : {}),
+        esbuild: {
+            // Diz ao esbuild como criar os elementos JSX
+            jsxFactory: 'React.createElement',
+            jsxFragment: 'React.Fragment',
+
+            loader: "jsx",
+
+            include: [
+                // Adicione extensões que você quer que sejam tratadas como JSX
+                "src/**/*.jsx",
+            ],
+            exclude: [],
+        },
         plugins: [
             react(),
             wordPressAssetPlugin(),
@@ -112,18 +125,7 @@ export default defineConfig(({ command, mode }) => {
                     });
                 }
             },
-            viteStaticCopy({
-                targets: [
-                    {
-                        src: './static/*',
-                        dest: '../dist'
-                    },
-                    {
-                        src: './images/*',
-                        dest: '../dist/images'
-                    }
-                ]
-            }),
+            // Otimização de imagens apenas em produção
             viteImagemin({
                 disable: isDevelopment,
                 gifsicle: {
