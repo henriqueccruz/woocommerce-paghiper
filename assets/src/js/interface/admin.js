@@ -127,29 +127,6 @@ jQuery(function ($) {
         }
     });
 
-    // --- LÓGICA DA SEÇÃO "CRONÔMETRO" ---
-    // (Esta é a parte mais complexa e é um pseudo-código/guia)
-    // Você vai precisar de uma função para converter o total de minutos (salvo no BD) para D/H/M
-    function updateTotalMinutes() {
-        const days = parseInt($('#cron-days').text());
-        const hours = parseInt($('#cron-hours').text());
-        const minutes = parseInt($('#cron-minutes').text());
-        const totalMinutes = (days * 24 * 60) + (hours * 60) + minutes;
-        valueInput.val(totalMinutes).trigger('change');
-    }
-    
-    // Adicionar listeners nos chevrons ou outros controles para o cronômetro
-    // Ex: ao incrementar minutos
-    // let min = parseInt($('#cron-minutes').text());
-    // min++;
-    // if (min > 59) {
-    //   min = 0;
-    //   // Incrementar horas... e assim por diante
-    // }
-    // $('#cron-minutes').text(min);
-    // updateTotalMinutes();
-
-
     // --- LÓGICA DO CRONÔMETRO ---
     let chronoOdometers = {
         days: null,
@@ -163,34 +140,60 @@ jQuery(function ($) {
         minutes: 59
     };
 
-    // Inicializa os displays do cronômetro
+    // Função para atualizar o valor total em minutos no input hidden
+    function updateTotalMinutes() {
+        const days = chronoOdometers.days.value;
+        const hours = chronoOdometers.hours.value;
+        const minutes = chronoOdometers.minutes.value;
+        const totalMinutes = (days * 24 * 60) + (hours * 60) + minutes;
+        valueInput.val(totalMinutes).trigger('change');
+    }
+
+    // Inicializa os displays do cronômetro com os valores corretos
     function initChronoDisplays() {
-        let initialValues = { days: 0, hours: 0, minutes: 0 };
+        let initialValues = { days: 0, hours: 0, minutes: 30 }; // Default de 30 minutos
 
         if (paghiper_settings.due_date_mode === 'minutes') {
             const totalMinutes = parseInt(paghiper_settings.due_date_value, 10);
-            initialValues = {
-                days: Math.floor(totalMinutes / (24 * 60)),
-                hours: Math.floor((totalMinutes % (24 * 60)) / 60),
-                minutes: totalMinutes % 60
-            };
+            if (!isNaN(totalMinutes) && totalMinutes > 0) {
+                initialValues = {
+                    days: Math.floor(totalMinutes / (24 * 60)),
+                    hours: Math.floor((totalMinutes % (24 * 60)) / 60),
+                    minutes: totalMinutes % 60
+                };
+            }
         }
 
         chronoOdometers.days = new OdometerDisplay($('#cron-days'), initialValues.days, chronoLimits.days);
         chronoOdometers.hours = new OdometerDisplay($('#cron-hours'), initialValues.hours, chronoLimits.hours);
         chronoOdometers.minutes = new OdometerDisplay($('#cron-minutes'), initialValues.minutes, chronoLimits.minutes);
+        
+        // Atualiza o valor inicial no input hidden
+        updateTotalMinutes();
     }
 
     initChronoDisplays();
 
-    // Manipuladores para os controles do cronômetro
-    $('.chrono-control').on('click', function() {
-        const unit = $(this).data('unit');
-        const action = $(this).data('action');
+    // Manipuladores para os controles do cronômetro (dias, horas, minutos)
+    $('#minutes-mode-section .chevron-control').on('click', function() {
+        const $this = $(this);
+        const unitContainer = $this.closest('.time-unit');
+        let unit;
+
+        // Determina a unidade (dias, horas, minutos) com base no elemento pai
+        if (unitContainer.find('#cron-days').length) {
+            unit = 'days';
+        } else if (unitContainer.find('#cron-hours').length) {
+            unit = 'hours';
+        } else {
+            unit = 'minutes';
+        }
+
+        const action = $this.data('action');
         const direction = action === 'increment' ? 1 : -1;
         let newValue = chronoOdometers[unit].value + direction;
 
-        // Aplica os limites circulares
+        // Aplica os limites (0-3 para dias, 0-23 para horas, 0-59 para minutos) de forma circular
         if (newValue < 0) {
             newValue = chronoLimits[unit];
         } else if (newValue > chronoLimits[unit]) {
