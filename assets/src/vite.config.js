@@ -44,12 +44,11 @@ export default defineConfig(({ command, mode }) => {
             watch: isDevelopment && isBuild ? {} : null,
             rollupOptions: {
                 input: entries,
-                external: Object.keys(externalDeps),
+                //external: Object.keys(externalDeps),
                 output: {
                     format: 'es',
                     entryFileNames: '[name].js',
-                    assetFileNames: '[name][extname]',
-                    globals: externalDeps
+                    assetFileNames: '[name][extname]'
                 }
             }
         },
@@ -64,11 +63,11 @@ export default defineConfig(({ command, mode }) => {
                     cert: './certificates/wordpress.sandbox.local+3.pem'
                 },
                 watch: {
-                    include: ['./js/**/*.{js,jsx}', './scss/**/*.scss'],
-                    exclude: ['node_modules/**', 'dist/**']
+                    include: ['./js/**/*.{js,jsx}', './scss/**/*.scss', './static/**/*', './images/**/*', './../../**/*.php'],
+                    exclude: ['node_modules/**', 'dist/**', './**/.DS_Store']
                 },
                 proxy: {
-                    '^/': {
+                    '^(?!/(@vite|node_modules))': {
                         target: 'https://wordpress.sandbox.local',
                         changeOrigin: true,
                         secure: false
@@ -81,16 +80,33 @@ export default defineConfig(({ command, mode }) => {
                     clientPort: 5173
                 }
             },
+            // Build automático no servidor de desenvolvimento
+            build: {
+                outDir: '../dist',
+                emptyOutDir: false,
+                minify: false,
+                sourcemap: true,
+                watch: {},
+                rollupOptions: {
+                    input: entries,
+                    output: {
+                        format: 'es',
+                        entryFileNames: '[name].js',
+                        assetFileNames: '[name][extname]'
+                    }
+                }
+            }
         } : {}),
         plugins: [
             react(),
             wordPressAssetPlugin(),
             {
-                name: 'wrap-in-iife',
+                name: 'wrap-js-in-iife',
                 generateBundle(options, bundle) {
                     Object.keys(bundle).forEach(fileName => {
                         const file = bundle[fileName];
-                        if (file.type === 'chunk' && fileName.endsWith('.js')) {
+                        // Apenas arquivos JS, não CSS
+                        if (file.type === 'chunk' && fileName.endsWith('.js') && !fileName.includes('css')) {
                             file.code = `(function(){${file.code}})();`;
                         }
                     });
