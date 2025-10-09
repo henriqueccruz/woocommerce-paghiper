@@ -299,6 +299,7 @@ class WC_Paghiper_Base_Gateway {
 		$mode  = $this->due_date_mode;
 		$value = $this->due_date_value;
 
+		ob_start();
 		?>
 		<tr valign="top">
 			<th scope="row" class="titledesc">
@@ -381,6 +382,10 @@ class WC_Paghiper_Base_Gateway {
 			</td>
 		</tr>
 		<?php
+
+		$html_string = ob_get_clean();
+
+		return $html_string;
 	}
 
 	/**
