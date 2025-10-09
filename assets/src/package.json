@@ -7,24 +7,29 @@
     "license": "ISC",
     "type": "module",
     "devDependencies": {
+        "@babel/plugin-transform-react-jsx": "^7.27.1",
+        "@babel/preset-react": "^7.27.1",
         "@vitejs/plugin-react": "^5.0.4",
         "@wordpress/components": "^30.5.0",
         "@wordpress/element": "^6.32.0",
         "@wordpress/i18n": "^6.5.0",
         "bootstrap-scss": "^4.6.1",
+        "esbuild": "^0.25.10",
         "sass": "^1.93.2",
         "validation-br": "^1.5.2",
         "vite": "^5.4.20",
         "vite-plugin-imagemin": "^0.6.1",
         "vite-plugin-static-copy": "^0.17.1"
     },
-    "dependencies": {},
     "browserslist": [
         "defaults"
     ],
     "scripts": {
-        "dev": "vite",
-        "build": "npm run clean && vite build",
+        "dev": "vite --force",
+        "dev:build": "vite build --mode development --watch",
+        "build": "npm run clean && vite build && npm run build:blocks",
+        "dev:blocks": "vite build --config vite.blocks.config.js --mode development --watch",
+        "build:blocks": "vite build --config vite.blocks.config.js --mode production",
         "preview": "vite preview",
         "i18n": "npm run i18n:build",
         "i18n:build": "npm run i18n:pot && ./bin/build_i18n.sh",

@@ -4,30 +4,17 @@ import viteImagemin from 'vite-plugin-imagemin';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
 import wordPressAssetPlugin from './plugins/wordpress-asset.js';
 
-// Configurações de módulos externos do WordPress e WooCommerce
-const externalDeps = {
-    '@woocommerce/blocks-registry'  : 'window.wc.wcBlocksRegistry',
-    '@woocommerce/settings'         : 'window.wc.wcSettings',
-    '@woocommerce/blocks-checkout'  : 'window.wc.blocksCheckout',
-    '@wordpress/element'            : 'wp.element',
-    '@wordpress/i18n'               : 'wp.i18n',
-    '@wordpress/html-entities'      : 'wp.htmlEntities',
-    '@wordpress/blocks'             : 'wp.blocks',
-    '@wordpress/block-editor'       : 'wp.blockEditor',
-    'jquery'                        : 'jQuery',
-    'wp'                            : 'wp'
-};
-
-// Lista de entradas para compilar
-const entries = {
+// Entradas separadas para JS e SCSS
+const jsEntries = {
     'js/frontend.min':  './js/interface/frontend.js',
     'js/backend.min':   './js/interface/backend.js',
-    'js/admin.min':     './js/interface/admin.js',
-    'js/blocks.min':    './js/blocks/woocommerce/index.jsx',
-    'js/hello.min':     './js/blocks/woocommerce/hello.jsx',
-    'css/frontend.min': './scss/frontend.scss',
-    'css/backend.min':  './scss/backend.scss',
-    'css/admin.min':    './scss/admin.scss'
+    'js/admin.min':     './js/interface/admin.js'
+};
+
+const cssEntries = {
+    'css/frontend': './scss/frontend.scss',
+    'css/backend':  './scss/backend.scss',
+    'css/admin':    './scss/admin.scss'
 };
 
 export default defineConfig(({ command, mode }) => {
@@ -40,17 +27,26 @@ export default defineConfig(({ command, mode }) => {
         build: {
             outDir: '../dist',
             emptyOutDir: false,
-            minify: isProduction,
+            minify: true,
             sourcemap: isDevelopment,
             watch: isDevelopment && isBuild ? {} : null,
             rollupOptions: {
-                input: entries,
-                external: Object.keys(externalDeps),
+                input: { ...jsEntries, ...cssEntries },
                 output: {
                     format: 'es',
-                    entryFileNames: '[name].js',
-                    assetFileNames: '[name][extname]',
-                    globals: externalDeps
+                    // JS: força .js, CSS: Vite gera .css automaticamente
+                    entryFileNames: (chunkInfo) => {
+                        if (chunkInfo.name && chunkInfo.name.startsWith('css/')) {
+                            return '[name].css';
+                        }
+                        return '[name].js';
+                    },
+                    assetFileNames: (assetInfo) => {
+                        if (assetInfo.name && assetInfo.name.startsWith('css/')) {
+                            return '[name].min[extname]';
+                        }
+                        return '[name][extname]';
+                    }
                 }
             }
         },
@@ -64,12 +60,12 @@ export default defineConfig(({ command, mode }) => {
                 },
                 origin: 'https://wordpress.sandbox.local:5173',
                 cors: true,
-                hmr: {
+                /*hmr: {
                     protocol: 'wss',
                     host: 'wordpress.sandbox.local',
-                },
+                },*/
                 proxy: {
-                    '^(?!/(@vite|node_modules|src|js|scss|__vite_ping))': {
+                    '^(?!/(@vite|@react-refresh|node_modules|src|js|scss|__vite_ping))': {
                         target: 'https://wordpress.sandbox.local',
                         changeOrigin: true,
                         secure: false
@@ -90,26 +86,14 @@ export default defineConfig(({ command, mode }) => {
                 rollupOptions: {
                     input: entries,
                     output: {
-                        format: 'es',
+                        format: 'iife',
                         entryFileNames: '[name].js',
-                        assetFileNames: '[name][extname]'
+                        assetFileNames: '[name][extname]',
+                        globals: externalDeps
                     }
                 }
             }
         } : {}),
-        esbuild: {
-            // Diz ao esbuild como criar os elementos JSX
-            jsxFactory: 'React.createElement',
-            jsxFragment: 'React.Fragment',
-
-            loader: "jsx",
-
-            include: [
-                // Adicione extensões que você quer que sejam tratadas como JSX
-                "src/**/*.jsx",
-            ],
-            exclude: [],
-        },
         plugins: [
             react(),
             wordPressAssetPlugin(),
