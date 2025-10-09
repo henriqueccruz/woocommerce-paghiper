@@ -33,7 +33,7 @@
         "defaults"
     ],
     "scripts": {
-        "dev": "vite dev --mode development --debug",
+        "dev": "concurrently \"vite dev --mode development --debug\" \"vite build --mode development --watch\"",
         "dev:build": "vite build --mode development --watch",
         "build": "npm run clean && vite build --mode production",
         "preview": "vite preview",
