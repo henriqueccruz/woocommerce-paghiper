@@ -1,3 +1,205 @@
-.paghiper-test {
-    display: none;
+// Paleta de Cores (baseada no admin do WordPress)
+$primary-color: #2271b1;
+$secondary-color: #f0f0f1;
+$border-color: #dcdcde;
+$text-color: #2c3338;
+$label-color: #50575e;
+$white: #fff;
+$accent-color: #7e8993;
+
+// Container principal do componente
+#paghiper-due-date-container {
+    background-color: $white;
+    border: 1px solid $border-color;
+    padding: 20px;
+    border-radius: 4px;
+    margin-top: 10px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+
+    // Seletor de modo (Dias vs Cronômetro)
+    .mode-switcher {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        margin-bottom: 25px;
+
+        label {
+            color: $label-color;
+            font-size: 14px;
+            user-select: none;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+
+            input {
+                opacity: 0;
+                width: 0;
+                height: 0;
+            }
+
+            .slider {
+                position: absolute;
+                cursor: pointer;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background-color: $accent-color;
+                transition: .4s;
+                border-radius: 24px;
+
+                &:before {
+                    position: absolute;
+                    content: "";
+                    height: 18px;
+                    width: 18px;
+                    left: 3px;
+                    bottom: 3px;
+                    background-color: white;
+                    transition: .4s;
+                    border-radius: 50%;
+                }
+            }
+
+            input:checked + .slider {
+                background-color: $primary-color;
+            }
+
+            input:checked + .slider:before {
+                transform: translateX(20px);
+            }
+        }
+    }
+
+    // Seções para cada modo
+    #days-mode-section,
+    #minutes-mode-section {
+        display: none;
+        overflow: hidden;
+        
+        &.active {
+            display: block;
+        }
+    }
+
+    // Estilos comuns para os wrappers de input
+    .days-input-wrapper,
+    .cronometro-wrapper {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 15px;
+    }
+
+    // Controles de seta (chevron)
+    .chevron-control {
+        cursor: pointer;
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        transition: background-color 0.2s ease;
+
+        svg {
+            fill: $accent-color;
+            transition: fill 0.2s ease;
+        }
+
+        &:hover {
+            background-color: $secondary-color;
+            svg {
+                fill: $primary-color;
+            }
+        }
+    }
+    
+    // Estilos do Odômetro
+    .odometer-display {
+        display: flex;
+        gap: 2px;
+    }
+
+    .odometer-digit {
+        height: 40px;
+        line-height: 40px;
+        font-size: 28px;
+        font-weight: 500;
+        overflow: hidden;
+        position: relative;
+        width: 20px;
+        text-align: center;
+        color: $text-color;
+    }
+
+    .odometer-digit-inner {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        transition: transform 0.2s ease-out;
+    }
+
+    .odometer-digit.rolling-up .odometer-digit-inner {
+        transform: translateY(-100%);
+    }
+
+    .odometer-digit.rolling-down .odometer-digit-inner {
+        transform: translateY(100%);
+    }
+
+    .odometer-digit-value {
+        display: block;
+        height: 40px;
+    }
+
+    // Wrapper específico para o modo "Dias"
+    .days-input-wrapper .days-display {
+        background: $secondary-color;
+        border: 1px solid $border-color;
+        border-radius: 4px;
+        padding: 5px 0;
+    }
+
+    // Estilos específicos do Cronômetro
+    .cronometro-wrapper {
+        .time-unit {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+
+            .chevron-control {
+                width: 28px;
+                height: 28px;
+                svg { width: 20px; height: 20px; }
+            }
+            
+            .days-display, .hours-display, .minutes-display {
+                 background: $secondary-color;
+                 border: 1px solid $border-color;
+                 border-radius: 4px;
+                 padding: 5px 0;
+            }
+
+            label {
+                font-size: 11px;
+                color: $label-color;
+                text-transform: uppercase;
+                font-weight: 500;
+            }
+        }
+
+        .time-separator {
+            font-size: 28px;
+            color: $accent-color;
+            padding-bottom: 25px; // Alinha com os labels
+        }
+    }
 }
