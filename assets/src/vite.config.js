@@ -93,11 +93,11 @@ export default defineConfig(({ command, mode }) => {
             viteStaticCopy({
                 targets: [
                     {
-                        src: 'static/**/*',
+                        src: './static/*',
                         dest: '../dist'
                     },
                     {
-                        src: 'images/**/*',
+                        src: './images/*',
                         dest: '../dist/images'
                     }
                 ]
