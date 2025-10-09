@@ -109,6 +109,14 @@ export default defineConfig(({ command, mode }) => {
                     });
                 }
             },
+            viteStaticCopy({
+                targets: [
+                    {
+                        src: './static/*',
+                        dest: '../dist'
+                    }
+                ]
+            }),
             // Otimização de imagens apenas em produção
             viteImagemin({
                 disable: isDevelopment,
