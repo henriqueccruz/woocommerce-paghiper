@@ -19,10 +19,7 @@ export default function wordPressAssetPlugin() {
                 'wc-blocks-checkout'
             ];
 
-            const assetFile = {
-                dependencies,
-                version: process.env.npm_package_version || '1.0.0'
-            };
+            const version = process.env.npm_package_version || '1.0.0';
 
             // Criar o conteúdo do arquivo PHP
             const content = `<?php
@@ -30,7 +27,12 @@ export default function wordPressAssetPlugin() {
  * Arquivo gerado automaticamente pelo build do Vite.
  * NÃO EDITAR DIRETAMENTE.
  */
-return ${JSON.stringify(assetFile, null, 2)};`;
+return array(
+    'dependencies' => array(
+        ${dependencies.map(dep => `'${dep}'`).join(",\n        ")}
+    ),
+    'version' => '${version}'
+);`;
 
             // Garantir que o diretório dist existe
             const outputDir = path.resolve(__dirname, '../../../includes/integrations/woocommerce-blocks');

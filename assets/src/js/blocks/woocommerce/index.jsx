@@ -1,10 +1,20 @@
-import { __ } from '@wordpress/i18n';
-import { useState, useEffect } from '@wordpress/element';
-import { registerPaymentMethod } from '@woocommerce/blocks-registry';
-import { ValidationInputError } from '@woocommerce/blocks-checkout';
-import { decodeEntities } from '@wordpress/html-entities';
-import { getSetting } from '@woocommerce/settings';
+//import { __ } from '@wordpress/i18n';
+//import { useState, useEffect } from '@wordpress/element';
+//import { decodeEntities } from '@wordpress/html-entities';
+
+const { __ } = window.wp.i18n;
+const { useState, useEffect } = window.wp.element;
+const { decodeEntities } = window.wp.htmlEntities;
+
 import { InlineTaxIdField } from './elements';
+
+//import { registerPaymentMethod } from '@woocommerce/blocks-registry';
+//import { ValidationInputError } from '@woocommerce/blocks-checkout';
+//import { getSetting } from '@woocommerce/settings';
+
+const { registerPaymentMethod } = window.wc.wcBlocksRegistry;
+const { ValidationInputError } 	= window.wc.blocksCheckout;
+const { getSetting } 			= window.wc.wcSettings;
 
 // PIX Gateway
 const pixSettings 		= getSetting( 'paghiper_pix_data', {} );
@@ -12,6 +22,16 @@ const defaultPixLabel 	= __( 'PIX Paghiper', 'woo-boleto-paghiper' )
 const label 			= decodeEntities( pixSettings.title ) || defaultPixLabel
 
 const Content = ( props ) => {
+
+	if (typeof wc === 'undefined' || !wc.wcBlocksRegistry) {
+		console.error('WooCommerce Blocks registry not found. Make sure WooCommerce Blocks is active and loaded.');
+		return;
+	}
+
+	if (typeof wc === 'undefined' || !wc.blocksCheckout) {
+		console.error('WooCommerce Blocks Checkout not found. Make sure WooCommerce Blocks is active and loaded.');
+		return;
+	}
 
 	const { eventRegistration, emitResponse } = props;
 	const { onPaymentSetup } = eventRegistration;
@@ -81,6 +101,7 @@ const Label = ( props ) => {
 	return <PaymentMethodLabel text={ label } />
 }
 
+// Define payment methods
 const PaghiperPix = {
 	name: "paghiper_pix",
 	label: <Label />,
@@ -92,9 +113,7 @@ const PaghiperPix = {
 	supports: {
 		features: pixSettings.supports,
 	}
-}
-
-registerPaymentMethod( PaghiperPix );
+};
 
 // Billet
 const billetSettings 		= getSetting( 'paghiper_billet_data', {} )
@@ -106,7 +125,7 @@ const BilletLabel = ( props ) => {
 	return <PaymentMethodLabel text={ billetLabel } />
 }
 
-registerPaymentMethod( {
+const PaghiperBillet = {
 	name: "paghiper_billet",
 	label: <BilletLabel />,
 	content: <Content gatewayName="paghiper_billet" gatewayDescription={ billetSettings.description } />,
@@ -116,4 +135,10 @@ registerPaymentMethod( {
 	supports: {
 		features: billetSettings.supports,
 	}
-} );
+};
+
+// Register payment methods
+if (typeof window.wc.wcBlocksRegistry !== 'undefined') {
+    registerPaymentMethod(PaghiperPix);
+    registerPaymentMethod(PaghiperBillet);
+}
