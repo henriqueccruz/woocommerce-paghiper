@@ -300,6 +300,12 @@ class WC_Paghiper {
 			$gateways = ['woocommerce_paghiper_pix_settings', 'woocommerce_paghiper_billet_settings'];
 			foreach($gateways as $gateway) {
 				$gateway_settings = get_option( $gateway );
+
+				// Bail early if plugin is not enabled
+				if(is_array($gateway_settings) && array_key_exists('enabled', $gateway_settings) && $gateway_settings['enabled'] !== 'yes') {
+					continue;
+				}
+
 				$is_pix = ($gateway == 'woocommerce_paghiper_pix_settings') ? true : false;
 	
 				$gateway_name = ($is_pix) ? 'PIX PagHiper' : 'Boleto PagHiper';
@@ -317,6 +323,12 @@ class WC_Paghiper {
 				$valid_gateway_apis = [];
 				foreach($gateways as $gateway) {
 					$gateway_settings = get_option( $gateway );
+
+					// Bail if plugin is not enabled
+					if(is_array($gateway_settings) && !array_key_exists('enabled', $gateway_settings) || $gateway_settings['enabled'] !== 'yes') {
+						continue;
+					}
+
 					$is_pix = ($gateway == 'woocommerce_paghiper_pix_settings') ? true : false;
 	
 					$gateway_name = ($is_pix) ? 'PIX PagHiper' : 'Boleto PagHiper';
