@@ -206,18 +206,18 @@ class WC_Paghiper_Base_Gateway {
 			),*/
 
 
-			$this->form_fields['due_date_options'] = array(
+			'due_date_options' => array(
 				'title' 	=> __( 'Vencimento do PIX', 'woocommerce-paghiper' ),
 				'type'  	=> 'due_date_selector',
 				'class'		=> array( 'form-row-wide', 'minutes_due_date-container' ),
 			),
 
-			$this->form_fields['due_date_mode'] = array(
+			'due_date_mode' => array(
 				'type'		=> 'hidden',
 				'default' 	=> 'days', // 'days' ou 'minutes'
 			),
 
-			$this->form_fields['due_date_value'] = array(
+			'due_date_value' => array(
 				'type'    	=> 'hidden',
 				'default' 	=> ($this->isPIX ? 30 : 3),
 			),
@@ -324,13 +324,18 @@ class WC_Paghiper_Base_Gateway {
 
 					<div id="days-mode-section" class="<?php echo $mode === 'days' ? 'active' : ''; ?>">
 						<div class="days-input-wrapper">
-							<span class="chevron-control" data-action="increment">
-								<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><path d="m12 6.586-8.707 8.707 1.414 1.414L12 9.414l7.293 7.293 1.414-1.414L12 6.586z"/></svg>
-							</span>
-							<div class="days-display" data-value="<?php echo esc_attr($value); ?>">0</div>
-							<span class="chevron-control" data-action="decrement">
-								<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><path d="M12 17.414 3.293 8.707l1.414-1.414L12 14.586l7.293-7.293 1.414 1.414L12 17.414z"/></svg>
-							</span>
+							<div class="time-unit">
+								<span class="chevron-control" data-action="increment">
+									<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><path d="m12 6.586-8.707 8.707 1.414 1.414L12 9.414l7.293 7.293 1.414-1.414L12 6.586z"/></svg>
+								</span>
+								<div class="days-display" data-value="<?php echo esc_attr($value); ?>">
+									<?php // Odometer will be rendered here by JS ?>
+								</div>
+								<label>Dias</label>
+								<span class="chevron-control" data-action="decrement">
+									<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><path d="M12 17.414 3.293 8.707l1.414-1.414L12 14.586l7.293-7.293 1.414 1.414L12 17.414z"/></svg>
+								</span>
+							</div>
 						</div>
 					</div>
 
@@ -342,8 +347,8 @@ class WC_Paghiper_Base_Gateway {
 								</span>
 								<div class="days-display">
 									<span class="time-display" id="cron-days">0</span>
-									<label>Dias</label>
 								</div>
+								<label>Dias</label>
 								<span class="chevron-control" data-action="decrement">
 									<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><path d="M12 17.414 3.293 8.707l1.414-1.414L12 14.586l7.293-7.293 1.414 1.414L12 17.414z"/></svg>
 								</span>
@@ -355,8 +360,8 @@ class WC_Paghiper_Base_Gateway {
 								</span>
 								<div class="hours-display">
 									<span class="time-display" id="cron-hours">0</span>
-									<label>Horas</label>
 								</div>
+								<label>Horas</label>
 								<span class="chevron-control" data-action="decrement">
 									<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><path d="M12 17.414 3.293 8.707l1.414-1.414L12 14.586l7.293-7.293 1.414 1.414L12 17.414z"/></svg>
 								</span>
@@ -368,8 +373,8 @@ class WC_Paghiper_Base_Gateway {
 								</span>
 								<div class="minutes-display">
 									<span class="time-display" id="cron-minutes">0</span>
-									<label>Minutos</label>
 								</div>
+								<label>Minutos</label>
 								<span class="chevron-control" data-action="decrement">
 									<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><path d="M12 17.414 3.293 8.707l1.414-1.414L12 14.586l7.293-7.293 1.414 1.414L12 17.414z"/></svg>
 								</span>

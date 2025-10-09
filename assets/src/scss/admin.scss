@@ -138,20 +138,11 @@ $accent-color: #7e8993;
         color: $text-color;
     }
 
-    .odometer-digit-inner {
+    .odometer-rotor {
+        width: 100%;
         position: absolute;
         top: 0;
         left: 0;
-        width: 100%;
-        transition: transform 0.2s ease-out;
-    }
-
-    .odometer-digit.rolling-up .odometer-digit-inner {
-        transform: translateY(-100%);
-    }
-
-    .odometer-digit.rolling-down .odometer-digit-inner {
-        transform: translateY(100%);
     }
 
     .odometer-digit-value {
@@ -167,35 +158,38 @@ $accent-color: #7e8993;
         padding: 5px 0;
     }
 
-    // Estilos específicos do Cronômetro
-    .cronometro-wrapper {
-        .time-unit {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 5px;
+    // Estilos para as unidades de tempo/dias (layout vertical)
+    .time-unit {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 5px;
 
-            .chevron-control {
-                width: 28px;
-                height: 28px;
-                svg { width: 20px; height: 20px; }
-            }
-            
-            .days-display, .hours-display, .minutes-display {
-                 background: $secondary-color;
-                 border: 1px solid $border-color;
-                 border-radius: 4px;
-                 padding: 5px 0;
-            }
-
-            label {
-                font-size: 11px;
-                color: $label-color;
-                text-transform: uppercase;
-                font-weight: 500;
-            }
+        .chevron-control {
+            width: 28px;
+            height: 28px;
+            svg { width: 20px; height: 20px; }
+        }
+        
+        .days-display,
+        .hours-display,
+        .minutes-display {
+             background: $secondary-color;
+             border: 1px solid $border-color;
+             border-radius: 4px;
+             padding: 5px 0;
         }
 
+        label {
+            font-size: 11px;
+            color: $label-color;
+            text-transform: uppercase;
+            font-weight: 500;
+        }
+    }
+
+    // Estilos específicos do Cronômetro
+    .cronometro-wrapper {
         .time-separator {
             font-size: 28px;
             color: $accent-color;
