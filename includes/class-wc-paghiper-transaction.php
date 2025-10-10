@@ -636,7 +636,8 @@ class WC_PagHiper_Transaction {
 				}
 
 				if( !$conf || (is_array($conf) && in_array('code', $conf)) ) {
-					$barcode_url = plugins_url( "assets/php/barcode.php?codigo={$barcode_number}", plugin_dir_path( __FILE__ ) );
+										$barcode_url_base = wc_paghiper_assets_url('php/barcode.php');
+					$barcode_url = add_query_arg('codigo', $barcode_number, $barcode_url_base);
 					$html .= ($barcode_number) ? "<img src='{$barcode_url}' title='Código de barras do boleto deste pedido.' style='max-width: 100%;'>" : '';
 				}
 

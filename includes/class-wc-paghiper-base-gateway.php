@@ -880,8 +880,8 @@ class WC_Paghiper_Base_Gateway {
 					$due_datetime = new DateTime($order_data['order_transaction_due_datetime'], $this->timezone);
 					$timestamp = $due_datetime->getTimestamp();
 					
-					// A constante WC_PAGHIPER_MAIN_FILE deve estar definida no arquivo principal do plugin
-					$countdown_url = plugins_url('assets/dist/php/countdown.php?ts=' . $timestamp, WC_PAGHIPER_MAIN_FILE);
+					$countdown_url_base = wc_paghiper_assets_url('php/countdown.php');
+					$countdown_url = add_query_arg('ts', $timestamp, $countdown_url_base);
 
 					$message .= '<p style="text-align:center;margin-top:15px;'><strong>Expira em:</strong><br>';
 					$message .= '<img src="' . esc_url($countdown_url) . '" alt="Contador de Vencimento" /></p>';
