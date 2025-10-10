@@ -658,6 +658,9 @@ class WC_Paghiper_Base_Gateway {
 			];
 
 		}
+			
+		global $woocommerce;
+		$woocommerce->cart->empty_cart();
 
 		$url = add_query_arg( 'key', $order->get_order_key(), add_query_arg( 'order', $order_id, get_permalink( woocommerce_get_page_id( 'thanks' ) ) ) );
 
