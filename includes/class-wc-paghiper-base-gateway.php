@@ -620,20 +620,6 @@ class WC_Paghiper_Base_Gateway {
 		// Generates ticket data.
 		$this->populate_initial_transaction_date( $order );
 
-		if ( defined( 'WC_VERSION' ) && version_compare( WC_VERSION, '2.1', '>=' ) ) {
-			if ( $is_frontend ) {
-				WC()->cart->empty_cart();
-			}
-
-			$url = $order->get_checkout_order_received_url();
-		} else {
-			global $woocommerce;
-
-			$woocommerce->cart->empty_cart();
-
-			$url = add_query_arg( 'key', $order->get_order_key(), add_query_arg( 'order', $order_id, get_permalink( woocommerce_get_page_id( 'thanks' ) ) ) );
-		}
-
 		// Gera um boleto e guarda os dados, pra reutilizarmos.
 		require_once WC_Paghiper::get_plugin_path() . 'includes/class-wc-paghiper-transaction.php';
 
@@ -666,9 +652,14 @@ class WC_Paghiper_Base_Gateway {
 			}
 			
 			wc_add_notice( 'Não foi possível gerar o seu '. ($this->isPIX ? 'PIX' : 'boleto'), 'error' );
-			return;
+			return [
+				'result'   => 'failure',
+				'redirect' => wc_get_checkout_url()
+			];
 
 		}
+
+		$url = add_query_arg( 'key', $order->get_order_key(), add_query_arg( 'order', $order_id, get_permalink( woocommerce_get_page_id( 'thanks' ) ) ) );
 
 		// Return thankyou redirect.
 		return array(
