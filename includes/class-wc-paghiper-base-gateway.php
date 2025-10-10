@@ -192,20 +192,6 @@ class WC_Paghiper_Base_Gateway {
 				'type'        => 'password',
 				'description' => __( 'Extremamente importante, você pode gerar seu token em nossa pagina: Painel > Ferramentas > Token.', 'woo-boleto-paghiper' ),
 			),
-			/*'days_due_date' => array(
-				'title'       => __( 'Dias corridos para o vencimento', 'woo-boleto-paghiper' ),
-				'type'        => 'number',
-				'description' => __( 'Número de dias para calcular a data de vencimento do '.($this->isPIX ? 'PIX' : 'boleto').'. Caso a data de vencimento não seja útil, o sistema bancário considera o dia útil seguinte como data de vencimento.', 'woo-boleto-paghiper' ),
-				'desc_tip'    => true,
-				'default'     => 2
-			),
-			'due_date_config' => array(
-				'type'        => 'wc_paghiper_custom_html',
-				'class'       => array( 'form-row-wide', 'minutes_due_date-container' ),
-				'custom_html' => $this->get_expiration_form_fields($this->gateway),
-			),*/
-
-
 			'due_date_options' => array(
 				'title' 	=> __( 'Vencimento do PIX', 'woocommerce-paghiper' ),
 				'type'  	=> 'due_date_selector',
@@ -221,10 +207,6 @@ class WC_Paghiper_Base_Gateway {
 				'type'    	=> 'hidden',
 				'default' 	=> ($this->isPIX ? 30 : 3),
 			),
-
-
-
-
 			'open_after_day_due' => array(
 				'title'       => __( 'Dias de tolerância para pagto. do '.($this->isPIX ? 'PIX' : 'boleto'), 'woo-boleto-paghiper' ),
 				'type'        => 'number',
@@ -636,7 +618,7 @@ class WC_Paghiper_Base_Gateway {
 		}
 
 		// Generates ticket data.
-		$this->populate_initial_billet_date( $order );
+		$this->populate_initial_transaction_date( $order );
 
 		if ( defined( 'WC_VERSION' ) && version_compare( WC_VERSION, '2.1', '>=' ) ) {
 			if ( $is_frontend ) {
@@ -700,22 +682,34 @@ class WC_Paghiper_Base_Gateway {
 	 *
 	 * @param  object $order Order object.
 	 */
-	public function populate_initial_billet_date( $order ) {
-
-		//TODO
-		// Ticket data.
+	public function populate_initial_transaction_date( $order ) {
 		$data				= array();
-		$due_date_config 	= absint( $this->days_due_date );
 		$gateway_name 		= $order->get_payment_method();
 		
 		$transaction_due_date = new DateTime;
 		$transaction_due_date->setTimezone($this->timezone);
-		if($due_date_config > 0)
-			$transaction_due_date->modify( "+{$due_date_config} days" );
 
-		// Maybe skip non-workdays as per configuration
-		$maybe_skip_non_workdays = ($gateway_name == 'paghiper_pix') ? null : $this->skip_non_workdays;
-		$transaction_due_date = wc_paghiper_add_workdays($transaction_due_date, $order, 'date', $maybe_skip_non_workdays);
+		// Usa o modo e valor do novo seletor, definidos no construtor
+		if ($this->due_date_mode === 'minutes' && $gateway_name === 'paghiper_pix') {
+			// Lógica para modo Minutos
+			$minutes_to_add = absint($this->due_date_value);
+			if ($minutes_to_add > 0) {
+				$transaction_due_date->modify( "+{$minutes_to_add} minutes" );
+			}
+			// Salva o datetime completo para referência futura
+			$data['order_transaction_due_datetime'] = $transaction_due_date->format('Y-m-d H:i:s');
+		} else {
+			// Lógica para modo Dias (mantendo a estrutura original mas com o novo valor)
+			$days_to_add = absint($this->due_date_value);
+			if($days_to_add > 0) {
+				$transaction_due_date->modify( "+{$days_to_add} days" );
+            }
+			// Ajusta para não vencer em fins de semana, se configurado
+			$maybe_skip_non_workdays = ($gateway_name == 'paghiper_pix') ? null : $this->skip_non_workdays;
+			$transaction_due_date = wc_paghiper_add_workdays($transaction_due_date, $order, 'date', $maybe_skip_non_workdays);
+		}
+
+		// Salva a data no formato Y-m-d para compatibilidade
 		$data['order_transaction_due_date'] = $transaction_due_date->format('Y-m-d');
 		$data['transaction_type'] = ($gateway_name == 'paghiper_pix') ? 'pix' : 'billet';
 

@@ -172,7 +172,15 @@ class WC_PagHiper_Transaction {
 
 	public function determine_due_date() {
 		$order_due_date 	= $this->order_data['order_transaction_due_date'];
-		$transaction_days_due	= (!empty($this->gateway_settings['days_due_date'])) ? $this->gateway_settings['days_due_date'] : 5;
+
+		// Usa o novo setting 'due_date_value', com fallback para o antigo e depois um default
+		if (isset($this->gateway_settings['due_date_value'])) {
+			$transaction_days_due = $this->gateway_settings['due_date_value'];
+		} elseif (!empty($this->gateway_settings['days_due_date'])) {
+			$transaction_days_due = $this->gateway_settings['days_due_date'];
+		} else {
+			$transaction_days_due = 5;
+		}
 
 		$today = new DateTime;
 		$today->setTimezone($this->timezone);
@@ -194,7 +202,7 @@ class WC_PagHiper_Transaction {
 
 			// Calcular dias entre a data do pedido e os dias para vencimento na configuração
 			$transaction_due_date = $today_date;
-			$transaction_due_date->modify( "+{$billet_days_due} days" );
+			$transaction_due_date->modify( "+{$transaction_days_due} days" );
 
 			$transaction_due_days = (int) $billet_due_date->format('%a');
 
@@ -361,7 +369,17 @@ class WC_PagHiper_Transaction {
 
 		// Due date for the billet
 		$data['order_id'] 		= $this->order_id;
-		$data['days_due_date'] 	= $this->determine_due_date();
+
+		// Lógica de vencimento baseada no modo (dias ou minutos)
+		$due_date_mode = isset($this->gateway_settings['due_date_mode']) ? $this->gateway_settings['due_date_mode'] : 'days';
+
+		if ($due_date_mode === 'minutes' && $this->gateway_id === 'paghiper_pix') {
+			$due_date_value = isset($this->gateway_settings['due_date_value']) ? $this->gateway_settings['due_date_value'] : 30;
+			$data['minutes_due_date'] = $due_date_value;
+		} else {
+			// Mantém a lógica existente para dias, que agora usa o valor do novo seletor
+			$data['days_due_date'] = $this->determine_due_date();
+		}
 
 		// Seller/Order variable description
 		$billet_description = sprintf("Referente a pedido #%s na loja %s", $this->order_id, $shop_name);
