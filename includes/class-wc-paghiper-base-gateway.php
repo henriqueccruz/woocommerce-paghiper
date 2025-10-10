@@ -877,7 +877,7 @@ class WC_Paghiper_Base_Gateway {
 					$countdown_url_base = wc_paghiper_assets_url('php/countdown.php');
 					$countdown_url = add_query_arg('ts', $timestamp, $countdown_url_base);
 
-					$message .= '<p style="text-align:center;margin-top:15px;'><strong>Expira em:</strong><br>';
+					$message .= '<p style="text-align:center;margin-top:15px;"><strong>Expira em:</strong><br>';
 					$message .= '<img src="' . esc_url($countdown_url) . '" alt="Contador de Vencimento" /></p>';
 				}
 			}
