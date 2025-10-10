@@ -751,6 +751,10 @@ class WC_Paghiper {
 	public function load_plugin_assets() {
 
 		if( !wp_script_is( 'jquery-mask', 'registered' ) ) {
+			wp_register_script( 'jquery', wc_paghiper_assets_url('js/libs/jquery/jquery-3.6.0.min.js'), array(), '3.6.0', false );
+		}
+
+		if( !wp_script_is( 'jquery-mask', 'registered' ) ) {
 			wp_register_script( 'jquery-mask', wc_paghiper_assets_url('js/libs/jquery.mask/jquery.mask.min.js'), array( 'jquery' ), '1.14.16', false );
 		}
 
@@ -774,6 +778,11 @@ class WC_Paghiper {
 
 			wp_enqueue_style( 'paghiper-frontend-css' );
 			wp_enqueue_script(  'paghiper-frontend-js' );
+
+			// Load countdown script only on thank you page or when our shortcode is used
+			if ( is_wc_endpoint_url( 'order-received' ) || is_view_order_page() ) {
+				wp_enqueue_script(  'paghiper-countdown-js', wc_paghiper_assets_url('js/countdown.min.js'), ['jquery'], '1.0', false );
+			}
 
 		} else {
 			

@@ -760,6 +760,52 @@ class WC_Paghiper_Base_Gateway {
 			return;
 		}
 
+		// Mostra o contador regressivo para PIX em minutos
+		if ($order_payment_method === 'paghiper_pix' && $this->due_date_mode === 'minutes') {
+			$order_data = $order->get_meta('wc_paghiper_data');
+			if (!empty($order_data['order_transaction_due_datetime'])) {
+				
+				wp_enqueue_script('simply-countdown');
+
+				$due_datetime = new DateTime($order_data['order_transaction_due_datetime'], $this->timezone);
+				
+				$year = $due_datetime->format('Y');
+				$month = $due_datetime->format('m');
+				$day = $due_datetime->format('d');
+				$hour = $due_datetime->format('H');
+				$minute = $due_datetime->format('i');
+				$second = $due_datetime->format('s');
+
+				$html = '<div class="paghiper-countdown-wrapper" style="text-align: center; margin-bottom: 20px;">';
+				$html .= '<h4>Este código PIX expira em:</h4>';
+				$html .= '<div id="paghiper-pix-countdown"></div>';
+				$html .= '</div>';
+
+				$html .= "<script>
+					document.addEventListener('DOMContentLoaded', function() {
+						simplyCountdown('#paghiper-pix-countdown', {
+							year: {$year},
+							month: {$month},
+							day: {$day},
+							hours: {$hour},
+							minutes: {$minute},
+							seconds: {$second},
+							words: {
+								days: { singular: ' dia', plural: ' dias' },
+								hours: { singular: ' hora', plural: ' horas' },
+								minutes: { singular: ' minuto', plural: ' minutos' },
+								seconds: { singular: ' segundo', plural: ' segundos' }
+							},
+							plural: true,
+							enableUtc: false
+						});
+					});
+				</script>";
+				
+				echo $html;
+			}
+		}
+
 		require_once WC_Paghiper::get_plugin_path() . 'includes/class-wc-paghiper-transaction.php';
 
 		$paghiperTransaction = new WC_PagHiper_Transaction( $order_id );
@@ -827,6 +873,20 @@ class WC_Paghiper_Base_Gateway {
 			$html .= '</div>';
 
 		} else {
+			// Adiciona o contador regressivo para PIX em minutos no e-mail
+			if ($this->due_date_mode === 'minutes') {
+				$order_data = $order->get_meta('wc_paghiper_data');
+				if (!empty($order_data['order_transaction_due_datetime'])) {
+					$due_datetime = new DateTime($order_data['order_transaction_due_datetime'], $this->timezone);
+					$timestamp = $due_datetime->getTimestamp();
+					
+					// A constante WC_PAGHIPER_MAIN_FILE deve estar definida no arquivo principal do plugin
+					$countdown_url = plugins_url('assets/dist/php/countdown.php?ts=' . $timestamp, WC_PAGHIPER_MAIN_FILE);
+
+					$message .= '<p style="text-align:center;margin-top:15px;'><strong>Expira em:</strong><br>';
+					$message .= '<img src="' . esc_url($countdown_url) . '" alt="Contador de Vencimento" /></p>';
+				}
+			}
 			$html .= apply_filters( 'woo_paghiper_email_instructions', $message );
 		}
 
