@@ -1,5 +1,28 @@
 == Changelog ==
 
+## 2.5.2
+
+- Bufgix: Multiplas notificações de novo pedido enviadas
+
+## 2.5.1
+
+- Bufgix: Múltiplos PIXes gerados ao criar pedido
+
+## 2.5
+
+- Mudança sutil no nome do plugin por questões de compliance
+- Erro fatal no admin dos pedidos, a depender de algumas condições
+- Múltiplos bugfixes e melhorias
+
+## 2.4.3
+
+- Melhoria: Otimizações e refatoração de código em diversas rotas e jornadas
+- Melhoria: Mais informações de log
+- Fix: Mudanças de status duplicadas
+- Fix: Remoção de diversos warnings
+- Fix: Metabox não aparece para pedidos com HPOS ativado em algumas circunstâncias
+- FIx: Erros ocasionais nas áreas de admin, a depender da combinação de plug-ins utilizada
+
 ## 2.4.2
 
 - Compliance: Remove update_meta_data return checks.

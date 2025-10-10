@@ -1,4 +1,11 @@
 <?php
+/* * PagHiper Admin Class
+ *
+ * @package PagHiper for WooCommerce
+ */
+
+// For the WP team: error_log() is used only on emergency type of errors.
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -9,6 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 class WC_Paghiper_Admin {
 
 	private $timezone;
+	private $log;
 
 	/**
 	 * Initialize the admin.

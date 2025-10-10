@@ -1,4 +1,16 @@
 <?php
+/**
+ * PagHiper Base Gateway Class
+ *
+ * @package PagHiper for WooCommerce
+ */
+
+// For the WP team: var_export() is used only for logging purposes, if the user has debug enabled on plugin settings.
+// Nonce can't be used here because data being used comes directly from checkout, which isn't necessarily authenticated.
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit; // Exit if accessed directly.
+}
 
 class WC_Paghiper_Base_Gateway {
 
@@ -60,7 +72,17 @@ class WC_Paghiper_Base_Gateway {
      * @return string 
      */ 
     public function currency_not_supported_message() { 
-		echo sprintf('<div class="error notice"><p><strong>%s: </strong>%s <a href="%s">%s</a></p></div>', __($this->isPIX ? 'PIX Paghiper' : 'Boleto Paghiper'), __('A moeda-padrão do seu Woocommerce não é o R$. Ajuste suas configurações aqui:'), admin_url('admin.php?page=wc-settings&tab=general'), __('Configurações de moeda'));
+		if($this->gateway->id == 'paghiper_pix') {
+			$gateway_name = __('PIX Paghiper', 'woo-boleto-paghiper');
+		} else {
+			$gateway_name = __('Boleto Paghiper', 'woo-boleto-paghiper');
+		}
+		echo sprintf('<div class="error notice"><p><strong>%s: </strong>%s <a href="%s">%s</a></p></div>', 
+			esc_html($gateway_name),
+			esc_html( __('A moeda-padrão do seu Woocommerce não é o R$. Ajuste suas configurações aqui:', 'woo-boleto-paghiper') ), 
+			esc_url( admin_url('admin.php?page=wc-settings&tab=general') ),
+			esc_html( __('Configurações de moeda', 'woo-boleto-paghiper') )
+		);
 	}
 
 	/**
@@ -156,11 +178,18 @@ class WC_Paghiper_Base_Gateway {
 		$default_title 			= $this->isPIX ? 'PIX' : 'Boleto Bancário';
 		$default_description	= $this->isPIX ? 'Pague de maneira rápida e segura com PIX' : 'Pagar com Boleto Bancário';
 
+		$default_gateway_name 	= ($this->gateway->id == 'paghiper_pix') ? __('PIX', 'woo-boleto-paghiper') : __('boleto', 'woo-boleto-paghiper');
+
 		$first = array(
 			'enabled' => array(
-				'title'   => __( $default_label, 'woo-boleto-paghiper' ),
+				'title'   => $default_label,
 				'type'    => 'checkbox',
 				'label'   => __( 'Ativar/Desativar', 'woo-boleto-paghiper' ),
+				'description' => sprintf( 
+					__( 'Você está usando a versão <strong>%s</strong> do gateway %s da PagHiper.', 'woo-boleto-paghiper' ), 
+					WC_Paghiper::get_plugin_version(),
+					$default_title 
+			),
 				'default' => 'yes'
 			),
 			'title' => array(
@@ -168,17 +197,18 @@ class WC_Paghiper_Base_Gateway {
 				'type'        => 'text',
 				'description' => __( 'Esse campo controla o título da seção que o usuário vê durante o checkout.', 'woo-boleto-paghiper' ),
 				'desc_tip'    => true,
-				'default'     => __( $default_title, 'woo-boleto-paghiper' )
+				'default'     => $default_title
 			),
 			'description' => array(
 				'title'       => __( 'Descrição', 'woo-boleto-paghiper' ),
 				'type'        => 'textarea',
 				'description' => __( 'Esse campo controla o texto da seção que o usuário vê durante o checkout.', 'woo-boleto-paghiper' ),
 				'desc_tip'    => true,
-				'default'     => __( $default_description, 'woo-boleto-paghiper' )
+				'default'     => $default_description
 			),
 			'paghiper_details' => array(
-				'title' => __( 'Configurações do PagHiper '.($this->isPIX ? 'PIX' : 'Boleto bancário'), 'woo-boleto-paghiper' ),
+				/* translators: %s: Transaction type. May be PIX or billet, for an example. */
+				'title' => sprintf(__( 'Configurações do PagHiper %s', 'woo-boleto-paghiper' ), (($this->gateway->id == 'paghiper_pix') ? __('PIX', 'woo-boleto-paghiper') : __('Boleto bancário', 'woo-boleto-paghiper')) ),
 				'type'  => 'title'
 			),
 			'api_key' => array(
@@ -208,17 +238,21 @@ class WC_Paghiper_Base_Gateway {
 				'default' 	=> ($this->isPIX ? 30 : 3),
 			),
 			'open_after_day_due' => array(
-				'title'       => __( 'Dias de tolerância para pagto. do '.($this->isPIX ? 'PIX' : 'boleto'), 'woo-boleto-paghiper' ),
+				/* translators: %s: Transaction type. May be PIX or billet, for an example. */
+				'title'       => sprintf( __( 'Dias de tolerância para pagto. do %s', 'woo-boleto-paghiper' ), $default_gateway_name),
 				'type'        => 'number',
-				'description' => __( 'Ao configurar este item, será possível pagar o '.($this->isPIX ? 'PIX' : 'boleto').' por uma quantidade de dias após o vencimento. O mínimo é de 5 dias e máximo de 30 dias.', 'woo-boleto-paghiper' ),
+				/* translators: %s: Transaction type. May be PIX or billet, for an example. */
+				'description' => sprintf( __( 'Ao configurar este item, será possível pagar o %s por uma quantidade de dias após o vencimento. O mínimo é de 5 dias e máximo de 30 dias.', 'woo-boleto-paghiper' ), $default_gateway_name),
 				'desc_tip'    => true,
 				'default'     => 0
 			),
 			'skip_non_workdays' => array(
-				'title'       => __( 'Ajustar data de vencimento dos '.($this->isPIX ? 'PIXes' : 'boletos').' para dias úteis', 'woo-boleto-paghiper' ),
+				/* translators: %s: Transaction type. May be PIX or billet, for an example. */
+				'title'       => sprintf( __( 'Ajustar data de vencimento dos %s para dias úteis', 'woo-boleto-paghiper' ), $default_gateway_name),
 				'type'    	  => 'checkbox',
 				'label'   	  => __( 'Ativar/Desativar', 'woo-boleto-paghiper' ),
-				'description' => __( 'Ative esta opção para evitar '.($this->isPIX ? 'PIX' : 'boleto').' com vencimento aos sábados ou domingos.', 'woo-boleto-paghiper' ),
+				/* translators: %s: Transaction type. May be PIX or billet, for an example. */
+				'description' => sprintf( __( 'Ative esta opção para evitar %s com vencimento aos sábados ou domingos.', 'woo-boleto-paghiper' ), $default_gateway_name),
 				'desc_tip'    => true,
 				'default' 	  => 'yes'
 			)
@@ -236,21 +270,24 @@ class WC_Paghiper_Base_Gateway {
 				'default' => 'yes'
 			),
 			'set_status_when_waiting' => array(
-				'title'	  => __('Mudar status após emissão do '.($this->isPIX ? 'PIX' : 'boleto').' para:', 'woo-boleto-paghiper'),
+				/* translators: %s: Transaction type. May be PIX or billet, for an example. */
+				'title'	  => sprintf(__('Mudar status após emissão do %s para:', 'woo-boleto-paghiper'), $default_gateway_name),
 				'type'	  => 'select',
 				'options' => $this->get_available_status(),
 				'default'  => $this->get_available_status('on-hold'),
 
 			),
 			'set_status_when_paid' => array(
-				'title'	  => __('Mudar status após pagamento do '.($this->isPIX ? 'PIX' : 'boleto').' para:', 'woo-boleto-paghiper'),
+				/* translators: %s: Transaction type. May be PIX or billet, for an example. */
+				'title'	  => sprintf(__('Mudar status após pagamento do %s para:', 'woo-boleto-paghiper'), $default_gateway_name),
 				'type'	  => 'select',
 				'options' => $this->get_available_status(),
 				'default'  => $this->get_available_status('processing'),
 
 			),
 			'set_status_when_cancelled' => array(
-				'title'	  => __('Mudar status após cancelamento do '.($this->isPIX ? 'PIX' : 'boleto').' para:', 'woo-boleto-paghiper'),
+				/* translators: %s: Transaction type. May be PIX or billet, for an example. */
+				'title'	  => sprintf(__('Mudar status após cancelamento do %s para:', 'woo-boleto-paghiper'), $default_gateway_name),
 				'type'	  => 'select',
 				'options' => $this->get_available_status(),
 				'default'  => $this->get_available_status('cancelled'),
@@ -261,6 +298,7 @@ class WC_Paghiper_Base_Gateway {
 				'type'        => 'checkbox',
 				'label'       => __( 'Ativa o log de erros', 'woo-boleto-paghiper' ),
 				'default'     => 'yes',
+				/* translators: %s: Log filename. */
 				'description' => sprintf( __( 'Armazena eventos e erros, como chamadas API e exibições, dentro do arquivo %s Ative caso enfrente problemas.', 'woo-boleto-paghiper' ), $this->get_log_view() ),
 			),
 		);
@@ -427,7 +465,7 @@ class WC_Paghiper_Base_Gateway {
 		return false;
 	}
 
-	public function has_payer_fields() {
+	public function has_payer_fields($payer_cpf_cnpj) {
 		$order = $this->is_order();
 		if(!is_null($order)) {
 			$has_payer_fields = ($order && (!empty($order->get_billing_first_name()) || !empty($order->get_billing_company()) || !empty($order->{'_'.$order->get_payment_method().'_payer_name'})));
@@ -444,7 +482,7 @@ class WC_Paghiper_Base_Gateway {
 
 	public function payment_fields() {
 
-		echo wpautop( wp_kses_post( $this->gateway->description ) );
+		echo wp_kses_post( wpautop( $this->gateway->description ) );
 	 
 		echo '<fieldset id="wc-' . esc_attr( $this->gateway->id ) . '-form" class="wc-paghiper-form wc-payment-form" style="background:transparent;">';
 	 
@@ -453,15 +491,18 @@ class WC_Paghiper_Base_Gateway {
 	 
 		// Print fields only if there are no fields for the same purpose on the checkout
 		$has_taxid_fields = $this->has_taxid_fields();
-		if(!$has_taxid_fields && isset($_POST) && array_key_exists('post_data', $_POST)) {
-			parse_str( $_POST['post_data'], $post_data );
+		if(!$has_taxid_fields && isset($_POST) && array_key_exists('post_data', $_POST) && is_array($_POST['post_data'])) {
+      
+      		$sanitized_post_data = array_map('sanitize_text_field', wp_unslash($_POST['post_data']) );
+			parse_str( wp_unslash($sanitized_post_data), $post_data );
 			$has_taxid_fields = (array_key_exists('billing_cpf', $post_data) || array_key_exists('billing_cnpj', $post_data)) ? TRUE : FALSE;
+      
 		}
 
 		if(!$has_taxid_fields) {
 			echo '<div class="form-row form-row-wide paghiper-taxid-fieldset">
 				<label>Número de CPF/CNPJ <span class="required">*</span></label>
-				<input id="'.$this->gateway->id.'_cpf_cnpj" name="_'.$this->gateway->id.'_cpf_cnpj" class="paghiper_tax_id" type="text" autocomplete="off">
+				<input id="'.esc_attr($this->gateway->id).'_cpf_cnpj" name="_'.esc_attr($this->gateway->id).'_cpf_cnpj" class="paghiper_tax_id" type="text" autocomplete="off">
 				</div>
 				<div class="clear"></div>';
 		}
@@ -471,25 +512,25 @@ class WC_Paghiper_Base_Gateway {
 
 		// CNPJ/CNPJ came from our own checkout field
 		if(array_key_exists('_'.$this->gateway->id.'_cpf_cnpj', $_POST)) {
-			$payer_cpf_cnpj_value = $_POST['_'.$this->gateway->id.'_cpf_cnpj'];
+			$payer_cpf_cnpj_value = sanitize_text_field( wp_unslash($_POST['_'.$this->gateway->id.'_cpf_cnpj']) );
 
 		// Check if we have a TaxID field comes from Brazilian Market on Woocommerce 
 		} elseif(isset($post_data) && is_array($post_data)) {
 
 			// CPF validation
 			if(array_key_exists('billing_cpf', $post_data)) {
-				$payer_cpf_cnpj_value = $post_data['billing_cpf'];
+				$payer_cpf_cnpj_value = sanitize_text_field($post_data['billing_cpf']);
 
 			// CNPJ validation
 			} elseif(array_key_exists('billing_cnpj', $post_data)) {
-				$payer_cpf_cnpj_value = $post_data['billing_cnpj'];
+				$payer_cpf_cnpj_value = sanitize_text_field($post_data['billing_cnpj']);
 			}
 
 		}
 
-		$payer_cpf_cnpj = preg_replace('/\D/', '', sanitize_text_field($payer_cpf_cnpj_value));
+		$payer_cpf_cnpj = preg_replace('/\D/', '', $payer_cpf_cnpj_value);
 
-		$has_payer_fields = $this->has_payer_fields();
+		$has_payer_fields = $this->has_payer_fields($payer_cpf_cnpj);
 		if(!$has_payer_fields) {
 			$has_payer_fields = ((!is_null($payer_cpf_cnpj) && 
 									strlen($payer_cpf_cnpj) > 11 && 
@@ -509,7 +550,7 @@ class WC_Paghiper_Base_Gateway {
 				
 			echo '<div class="form-row form-row-wide paghiper-payername-fieldset">
 				<label>Nome do pagador <span class="required">*</span></label>
-				<input id="'.$this->gateway->id.'_payer_name" name="_'.$this->gateway->id.'_payer_name" type="text" autocomplete="off">
+				<input id="'. esc_attr($this->gateway->id) .'_payer_name" name="_'. esc_attr($this->gateway->id) .'_payer_name" type="text" autocomplete="off">
 				</div>
 				<div class="clear"></div>';
 		}
@@ -535,7 +576,7 @@ class WC_Paghiper_Base_Gateway {
 				if( (array_key_exists($taxid_post_key, $_POST) && !empty($_POST[$taxid_post_key])) ) {
 					$not_empty_keys[] = $taxid_post_key;
 	
-					$maybe_valid_taxid = preg_replace('/\D/', '', sanitize_text_field($_POST[$taxid_post_key]));
+					$maybe_valid_taxid = preg_replace('/\D/', '', sanitize_text_field( wp_unslash($_POST[$taxid_post_key]) ));
 					
 					// TODO: Check if item key exists in order meta too
 					if($validateAPI->validate_taxid($maybe_valid_taxid)) {
@@ -567,7 +608,7 @@ class WC_Paghiper_Base_Gateway {
 				foreach($taxid_payer_keys as $taxid_payer_key) {
 					// TODO: Check if item key exists in order meta too
 					if( (array_key_exists($taxid_payer_key, $_POST) && !empty($_POST[$taxid_payer_key])) ) {
-						$taxid_payer = sanitize_text_field($_POST[$taxid_payer_key]);
+						$taxid_payer = sanitize_text_field( wp_unslash($_POST[$taxid_payer_key]) );
 					}
 				}
 
@@ -609,11 +650,12 @@ class WC_Paghiper_Base_Gateway {
 		$taxid_keys = ["_{$this->gateway->id}_cpf_cnpj", "_{$this->gateway->id}_payer_name"];
 
 		foreach($taxid_keys as $taxid_key) {
-			if(isset($_POST[$taxid_key]) && !empty($_POST[$taxid_key])) {
-
-				$taxid_value = sanitize_text_field($_POST[$taxid_key]);
+			if(array_key_exists($taxid_key, $_POST) && !empty($_POST[$taxid_key])) {
+        
+				$taxid_value = sanitize_text_field( wp_unslash($_POST[$taxid_key]) );
 				$order->update_meta_data( $taxid_key, $taxid_value );
 				$order->save();
+        
 			}
 		}
 
@@ -632,17 +674,31 @@ class WC_Paghiper_Base_Gateway {
 			$waiting_status = (!empty($this->set_status_when_waiting)) ? $this->set_status_when_waiting : 'on-hold';
 			$order->update_status( $waiting_status, __( 'PagHiper: '. ($this->isPIX ? 'PIX' : 'Boleto') .' gerado e enviado por e-mail.', 'woo-boleto-paghiper' ) );
 
+			if ( $this->log ) {
+				wc_paghiper_add_log( 
+					$this->log, 
+					sprintf( 'Pedido #%s: Redirecionando usuário para a tela com os dados para pagamento.', $order_id) 
+				);
+			}
+
+			// Return thankyou redirect.
+			return [
+				'result'   => 'success',
+				'redirect' => $url
+			];
+
 		} else {
 
 			// Prints a notice, case order total surpasses our normal commercial limits
 			$order_total = round(floatval($order->get_total()));
 			if($order_total > 9000) {
-				$order->add_order_note( sprintf( __( 'Atenção! Total da transação excede R$ 9.000. Caso ainda não o tenha feito, entre em contato com nossa equipe comercial para liberação através do e-mail <a href="comercial@paghiper.com" target="_blank">comercial@paghiper.com</a>', 'woo_paghiper' ) ) );
+				$order->add_order_note( sprintf( __( 'Atenção! Total da transação excede R$ 9.000. Caso ainda não o tenha feito, entre em contato com nossa equipe comercial para liberação através do e-mail <a href="comercial@paghiper.com" target="_blank">comercial@paghiper.com</a>', 'woo-boleto-paghiper' ) ) );
 			}
 
 			if ( $this->log ) {
 				wc_paghiper_add_log( 
 					$this->log, 
+					/* translators: %s: Transaction type. May be PIX or billet, for an example. */
 					sprintf( 'Pedido #%s: Não foi possível gerar o %s. Detalhes: %s', 
 						$order_id, 
 						($this->isPIX ? 'PIX' : 'boleto'), 
@@ -650,13 +706,20 @@ class WC_Paghiper_Base_Gateway {
 					) 
 				);
 			}
-			
-			wc_add_notice( 'Não foi possível gerar o seu '. ($this->isPIX ? 'PIX' : 'boleto'), 'error' );
+            
+			wc_add_notice(
+				sprintf( 
+					/* translators: %s: Transaction type. May be PIX or billet, for an example. */
+					__('Não foi possível gerar o seu %s.', 'woo-boleto-paghiper'), 
+					($this->isPIX ? 'PIX' : 'boleto')
+			), 'error' );
+            
 			return [
 				'result'   => 'failure',
 				'redirect' => wc_get_checkout_url()
 			];
-
+			wc_add_notice( 'Não foi possível gerar o seu '. ($this->isPIX ? 'PIX' : 'boleto'), 'error' );
+			
 		}
 			
 		global $woocommerce;
@@ -710,11 +773,11 @@ class WC_Paghiper_Base_Gateway {
 		if ( $this->log ) {
 			wc_paghiper_add_log( 
 				$this->log, 
-				sprintf( 'Pedido #%s: Dados iniciais para o %s preparados. Detalhes: %s', 
+				sprintf( 'Pedido #%s: Dados iniciais para o %s preparados.', 
 					$order->get_id(), 
-					($this->isPIX ? 'PIX' : 'boleto'), 
-					var_export($data, true) 
-				) 
+					(($this->gateway->id == 'paghiper_pix') ? 'PIX' : 'boleto'), 
+				),
+				['transaction_data' => $data]
 			);
 		}
 
@@ -810,17 +873,23 @@ class WC_Paghiper_Base_Gateway {
 			$html = '<div class="woocommerce-message">';
 			$html .= sprintf( '<a class="button button-primary wc-forward" href="%s" target="_blank" style="display: block !important; visibility: visible !important;">%s</a>', esc_url( wc_paghiper_get_paghiper_url( $order->get_order_key() ) ), __( 'Pagar o Boleto', 'woo-boleto-paghiper' ) );
 	
-			$message = sprintf( __( '%sAtenção!%s Você NÃO vai receber o boleto pelos Correios.', 'woo-boleto-paghiper' ), '<strong>', '</strong>' ) . '<br />';
+			/* translators: %1$s: HTML opening tag, %2$s: HTML closing tag. */
+			$message = sprintf( __( '%1$sAtenção!%2$s Você NÃO vai receber o boleto pelos Correios.', 'woo-boleto-paghiper' ), '<strong>', '</strong>' ) . '<br />';
 			$message .= __( 'Clique no link abaixo e pague o boleto pelo seu aplicativo de Internet Banking .', 'woo-boleto-paghiper' ) . '<br />';
 			$message .= __( 'Se preferir, você pode imprimir e pagar o boleto em qualquer agência bancária ou lotérica.', 'woo-boleto-paghiper' ) . '<br />';
 	
 			$html .= apply_filters( 'woo_paghiper_thankyou_page_message', $message );
+
+			$transaction_due_date = new DateTime;
+			$transaction_due_date->setTimezone($this->timezone);
+			$transaction_due_date->modify( "+{$this->days_due_date} days" );
 	
-			$html .= '<strong style="display: block; margin-top: 15px; font-size: 0.8em">' . sprintf( __( 'Data de vencimento do Boleto: %s.', 'woo-boleto-paghiper' ), date( 'd/m/Y', time() + ( absint( $this->days_due_date ) * 86400 ) ) ) . '</strong>';
+			/* translators: %s: Billet due date. */
+			$html .= '<strong style="display: block; margin-top: 15px; font-size: 0.8em">' . sprintf( __( 'Data de vencimento do Boleto: %s.', 'woo-boleto-paghiper' ), $transaction_due_date->format('Y-m-d') ) . '</strong>';
 	
 			$html .= '</div>';
 	
-			echo $html;
+			echo wp_kses_post($html);
 
 		}
 	}
@@ -854,14 +923,21 @@ class WC_Paghiper_Base_Gateway {
 
 		if($order_payment_method !== 'paghiper_pix') {
 
-			$message .= sprintf( __( '%sAtenção!%s Você NÃO vai receber o boleto pelos Correios.', 'woo-boleto-paghiper' ), '<strong>', '</strong>' ) . '<br />';
+			$transaction_due_date = new DateTime;
+			$transaction_due_date->setTimezone($this->timezone);
+			$transaction_due_date->modify( "+{$this->days_due_date} days" );
+
+			/* translators: %1$s: HTML opening tag, %2$s: HTML closing tag. */
+			$message .= sprintf( __( '%1$sAtenção!%2$s Você NÃO vai receber o boleto pelos Correios.', 'woo-boleto-paghiper' ), '<strong>', '</strong>' ) . '<br />';
 			$message .= __( 'Se preferir, você pode imprimir e pagar o boleto em qualquer agência bancária ou lotérica.', 'woo-boleto-paghiper' ) . '<br />';
 	
 			$html .= apply_filters( 'woo_paghiper_email_instructions', $message );
 	
+			/* translators: %s1: Billet URL, %s2: Billet button text. */
 			$html .= '<br />' . sprintf( '<a class="button alt" href="%s" target="_blank">%s</a>', esc_url( wc_paghiper_get_paghiper_url( $order->get_order_key() ) ), __( 'Veja o boleto completo &rarr;', 'woo-boleto-paghiper' ) ) . '<br />';
 	
-			$html .= '<strong style="font-size: 0.8em">' . sprintf( __( 'Data de Vencimento: %s.', 'woo-boleto-paghiper' ), date( 'd/m/Y', time() + ( absint( $this->days_due_date ) * 86400 ) ) ) . '</strong>';
+			/* translators: %s: Billet due date. */
+			$html .= '<strong style="font-size: 0.8em">' . sprintf( __( 'Data de Vencimento: %s.', 'woo-boleto-paghiper' ), $transaction_due_date->format('Y-m-d') ) . '</strong>';
 	
 			$html .= '</p>';
 			$html .= '</div>';
@@ -884,6 +960,17 @@ class WC_Paghiper_Base_Gateway {
 			$html .= apply_filters( 'woo_paghiper_email_instructions', $message );
 		}
 
-		echo $html;
+		if ( $this->log ) {
+			wc_paghiper_add_log( 
+				$this->log, 
+				sprintf( 'Pedido #%s: Instruções de pagamento enviadas.', 
+					$order->get_id(), 
+					(($this->gateway->id == 'paghiper_pix') ? 'PIX' : 'boleto'), 
+				),
+				['transaction_data' => $data]
+			);
+		}
+
+		echo wp_kses_post($html);
 	}
 }

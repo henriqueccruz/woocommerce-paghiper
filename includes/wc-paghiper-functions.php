@@ -65,7 +65,7 @@ function wc_paghiper_initialize_log( $debug_settings ) {
 /**
  * Adds an item do log, if enabled from config
  *
- * @return object
+ * @return bool
  */
 function wc_paghiper_add_log( $logger, $message, $context = [], $level = WC_Log_Levels::INFO ) {
 
@@ -101,7 +101,8 @@ function wc_paghiper_add_workdays( $due_date, $order, $format, $workday_settings
 			$paghiper_data['order_transaction_due_date'] = $due_date->format( 'Y-m-d' );
 
 			$order->update_meta_data( 'wc_paghiper_data', $paghiper_data );
-			$order->add_order_note( sprintf( __( 'Data de vencimento ajustada para %s', 'woo_paghiper' ), $due_date->format('d/m/Y') ) );
+			/* translators: %s: Newly defined transaction due date. May be PIX or billet. For use in order notes */
+			$order->add_order_note( sprintf( __( 'Data de vencimento ajustada para %s', 'woo-boleto-paghiper' ), $due_date->format('d/m/Y') ) );
 			$order->save();
 			
 			if(function_exists('update_meta_cache'))
