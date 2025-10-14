@@ -15,7 +15,7 @@ $current_time = time();
 $remaining_time = $timestamp - $current_time;
 
 
-//$remaining_time = 0;
+$remaining_time = 10;
 
 // Se já expirou, ou se está nos últimos segundos, ativa o loop de "Expirado"
 $expired = ($remaining_time <= 0);
@@ -30,7 +30,7 @@ $cache_file = "cache/countdown_{$remaining_time}.gif";
 
 // Serve o GIF do cache se existir
 if (file_exists($cache_file)) {
-    file_get_contents($cache_file);
+    echo file_get_contents($cache_file);
     exit;
 }
 
