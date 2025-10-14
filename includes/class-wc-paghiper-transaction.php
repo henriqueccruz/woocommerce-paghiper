@@ -441,6 +441,7 @@ class WC_PagHiper_Transaction {
 		if ($due_date_mode === 'minutes' && $this->gateway_id === 'paghiper_pix') {
 			$due_date_value = isset($this->gateway_settings['due_date_value']) ? $this->gateway_settings['due_date_value'] : 30;
 			$data['minutes_due_date'] = $due_date_value;
+			$data['days_due_date'] = 0; // Set days_due_date to 0 when using minutes
 		} else {
 			// Mantém a lógica existente para dias, que agora usa o valor do novo seletor
 			$data['days_due_date'] = $this->determine_due_date();
