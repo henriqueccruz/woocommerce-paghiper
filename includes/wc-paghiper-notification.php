@@ -18,7 +18,7 @@ function woocommerce_paghiper_valid_ipn_request($return, $order_no, $settings) {
 
     global $paghiper_log;
 
-    $order          = wc_get_order($order_no);
+    $order          = new WC_Order($order_no);
     $order_status   = $order->get_status();
     $gateway_id     = $order->get_payment_method();
     $gateway_name   = ($gateway_id !== 'paghiper_pix') ? __('boleto', 'woo-boleto-paghiper') : __('PIX', 'woo-boleto-paghiper');
@@ -46,7 +46,7 @@ function woocommerce_paghiper_valid_ipn_request($return, $order_no, $settings) {
 
     sleep(3);
 
-    $order              = wc_get_order($order_no);
+    $order              = new WC_Order($order_no);
     $last_request_id    = $order->get_meta( 'wc_paghiper_ipn_request_id' );
     if($request_id !== $last_request_id) {
         if ( $paghiper_log ) {

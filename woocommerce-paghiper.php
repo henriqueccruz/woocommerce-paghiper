@@ -235,7 +235,7 @@ class WC_Paghiper {
 					return; // Exit;
 								
 				// Get an instance of the WC_Order object
-				$order = wc_get_order( $order_id );
+				$order = new WC_Order( $order_id );
 				$payment_method = $order->get_payment_method();
 
 				do_action( "woocommerce_thankyou_{$payment_method}", $order_id );
@@ -809,6 +809,10 @@ class WC_Paghiper {
 			wp_register_script( 'paghiper-frontend-js', wc_paghiper_assets_url('js/frontend.min.js'), array( 'jquery' ),'1.0', false );
 		}
 
+		if( !wp_script_is( 'simply-countdown', 'registered' ) ) {
+			wp_register_script( 'simply-countdown', wc_paghiper_assets_url('js/libs/simplyCountdown/simplyCountdown.min.js'), array( 'jquery' ), '1.0', false );
+		}
+
 		wp_register_style( 'paghiper-frontend-css', wc_paghiper_assets_url('css/frontend.min.css'), '', '1.0', false );
 
 		
@@ -824,7 +828,7 @@ class WC_Paghiper {
 
 			// Load countdown script only on thank you page or when our shortcode is used
 			if ( is_wc_endpoint_url( 'order-received' ) || is_view_order_page() ) {
-				wp_enqueue_script(  'paghiper-countdown-js', wc_paghiper_assets_url('js/countdown.min.js'), ['jquery'], '1.0', false );
+				wp_enqueue_script(  'simply-countdown' );
 			}
 
 		} else {

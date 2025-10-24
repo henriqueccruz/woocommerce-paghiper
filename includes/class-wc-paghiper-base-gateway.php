@@ -133,7 +133,7 @@ class WC_Paghiper_Base_Gateway {
 		// Gets order total from "pay for order" page.
 		if ( 0 < $order_id ) {
 
-			$order = wc_get_order( $order_id );
+			$order = new WC_Order( $order_id );
 			if ( $order ) {
 				$total = (float) $order->get_total();
 			}
@@ -646,7 +646,9 @@ class WC_Paghiper_Base_Gateway {
 	 */
 	public function process_payment( $order_id, $is_frontend = true ) {
 
-		$order = wc_get_order( $order_id );
+		global $woocommerce;
+
+		$order = new WC_Order( $order_id );
 		$taxid_keys = ["_{$this->gateway->id}_cpf_cnpj", "_{$this->gateway->id}_payer_name"];
 
 		foreach($taxid_keys as $taxid_key) {
@@ -680,6 +682,10 @@ class WC_Paghiper_Base_Gateway {
 					sprintf( 'Pedido #%s: Redirecionando usuário para a tela com os dados para pagamento.', $order_id) 
 				);
 			}
+			
+			$woocommerce->cart->empty_cart();
+
+			$url = $order->get_checkout_order_received_url();
 
 			// Return thankyou redirect.
 			return [
@@ -718,20 +724,21 @@ class WC_Paghiper_Base_Gateway {
 				'result'   => 'failure',
 				'redirect' => wc_get_checkout_url()
 			];
-			wc_add_notice( 'Não foi possível gerar o seu '. ($this->isPIX ? 'PIX' : 'boleto'), 'error' );
 			
 		}
-			
-		global $woocommerce;
-		$woocommerce->cart->empty_cart();
-
-		$url = add_query_arg( 'key', $order->get_order_key(), add_query_arg( 'order', $order_id, get_permalink( woocommerce_get_page_id( 'thanks' ) ) ) );
-
-		// Return thankyou redirect.
-		return array(
-			'result'   => 'success',
-			'redirect' => $url
-		);
+            
+		// Fallback error notice
+		wc_add_notice(
+			sprintf( 
+				/* translators: %s: Transaction type. May be PIX or billet, for an example. */
+				__('Problema inesperado ao gerar seu %s.', 'woo-boleto-paghiper'), 
+				($this->isPIX ? 'PIX' : 'boleto')
+		), 'error' );
+		
+		return [
+			'result'   => 'failure',
+			'redirect' => wc_get_checkout_url()
+		];
 	}
 
 	/**
@@ -797,7 +804,7 @@ class WC_Paghiper_Base_Gateway {
 	 */
 	public function show_payment_instructions($order) {
 
-		$order 		= (is_numeric($order)) ? wc_get_order($order) : $order;
+		$order 		= (is_numeric($order)) ? new WC_Order($order) : $order;
 		$order_id 	= $order->get_id();
 		$order_payment_method = $order->get_payment_method();
 		$order_status = (strpos($order->get_status(), 'wc-') === false) ? 'wc-'.$order->get_status() : $order->get_status();
@@ -834,8 +841,8 @@ class WC_Paghiper_Base_Gateway {
 				$second = $due_datetime->format('s');
 
 				$html = '<div class="paghiper-countdown-wrapper" style="text-align: center; margin-bottom: 20px;">';
-				$html .= '<h4>Este código PIX expira em:</h4>';
-				$html .= '<div id="paghiper-pix-countdown"></div>';
+				$html .= '<p>Seu pedido está reservado para você por:</p>';
+				$html .= '<div id="paghiper-pix-countdown" class="include-fonts"></div>';
 				$html .= '</div>';
 
 				$html .= "<script>
@@ -848,13 +855,17 @@ class WC_Paghiper_Base_Gateway {
 							minutes: {$minute},
 							seconds: {$second},
 							words: {
-								days: { singular: ' dia', plural: ' dias' },
-								hours: { singular: ' hora', plural: ' horas' },
-								minutes: { singular: ' minuto', plural: ' minutos' },
-								seconds: { singular: ' segundo', plural: ' segundos' }
+								days: { root: 'dia', lambda: (root, n) => n > 1 ? root + 's' : root },
+								hours: { root: 'hora', lambda: (root, n) => n > 1 ? root + 's' : root },
+								minutes: { root: 'minuto', lambda: (root, n) => n > 1 ? root + 's' : root },
+								seconds: { root: 'segundo', lambda: (root, n) => n > 1 ? root + 's' : root }
 							},
 							plural: true,
-							enableUtc: false
+							zeroPad: true,
+							enableUtc: false,
+							sectionClass: 'paghiper-chrono-section',
+							amountClass: 'paghiper-chrono-amount',
+							wordClass: 'paghiper-chrono-label',
 						});
 					});
 				</script>";
@@ -951,9 +962,9 @@ class WC_Paghiper_Base_Gateway {
 					$timestamp = $due_datetime->getTimestamp();
 					
 					$countdown_url_base = wc_paghiper_assets_url('php/countdown.php');
-					$countdown_url = add_query_arg('ts', $timestamp, $countdown_url_base);
+					$countdown_url = add_query_arg('order_due_time', $timestamp, $countdown_url_base);
 
-					$message .= '<p style="text-align:center;margin-top:15px;"><strong>Expira em:</strong><br>';
+					$message .= '<p style="text-align:center;margin-top:15px;"><strong>Seu pedido expira em:</strong><br>';
 					$message .= '<img src="' . esc_url($countdown_url) . '" alt="Contador de Vencimento" /></p>';
 				}
 			}

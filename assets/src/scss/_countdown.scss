@@ -1,0 +1,100 @@
+#paghiper-pix-countdown {
+    &.include-fonts {
+
+        /* atkinson-hyperlegible-mono-300 - latin */
+        @font-face {
+            font-display: swap; /* Check https://developer.mozilla.org/en-US/docs/Web/CSS/@font-face/font-display for other options. */
+            font-family: 'Atkinson Hyperlegible Mono';
+            font-style: normal;
+            font-weight: 300;
+            src: url('../fonts/web/atkinson-hyperlegible-mono-v8-latin-300.woff2') format('woff2'), /* Chrome 36+, Opera 23+, Firefox 39+, Safari 12+, iOS 10+ */
+                url('../fonts/web/atkinson-hyperlegible-mono-v8-latin-300.ttf') format('truetype'); /* Chrome 4+, Firefox 3.5+, IE 9+, Safari 3.1+, iOS 4.2+, Android Browser 2.2+ */
+        }
+
+        @font-face {
+            font-display: swap; /* Check https://developer.mozilla.org/en-US/docs/Web/CSS/@font-face/font-display for other options. */
+            font-family: 'Atkinson Hyperlegible Mono';
+            font-style: normal;
+            font-weight: 700;
+            src: url('../fonts/web/atkinson-hyperlegible-mono-v8-latin-700.woff2') format('woff2'), /* Chrome 36+, Opera 23+, Firefox 39+, Safari 12+, iOS 10+ */
+                url('../fonts/web/atkinson-hyperlegible-mono-v8-latin-700.ttf') format('truetype'); /* Chrome 4+, Firefox 3.5+, IE 9+, Safari 3.1+, iOS 4.2+, Android Browser 2.2+ */
+        }
+
+        @font-face {
+            font-display: swap; /* Check https://developer.mozilla.org/en-US/docs/Web/CSS/@font-face/font-display for other options. */
+            font-family: 'Atkinson Hyperlegible';
+            font-style: normal;
+            font-weight: 700;
+            src: url('../fonts/web/atkinson-hyperlegible-v12-latin-700.woff2') format('woff2'), /* Chrome 36+, Opera 23+, Firefox 39+, Safari 12+, iOS 10+ */
+                url('../fonts/web/atkinson-hyperlegible-v12-latin-700.ttf') format('truetype'); /* Chrome 4+, Firefox 3.5+, IE 9+, Safari 3.1+, iOS 4.2+, Android Browser 2.2+ */
+        }
+
+        .paghiper {
+            &-chrono-amount {
+                font-family: 'Atkinson Hyperlegible Mono', monospace;
+            }
+
+            &-chrono-label {
+                font-family: 'Atkinson Hyperlegible', monospace;
+            }
+
+            &-chrono-section {
+               
+                &:before {
+                    font-family: 'Atkinson Hyperlegible Mono', monospace;
+                }
+
+            }
+        }
+
+    }
+
+    display: flex;
+    flex-direction: row;
+
+    .paghiper {
+        &-chrono-amount {
+            font-size: 2.85rem;
+            font-weight: 300;
+            line-height: 1;
+            display: inline-block;
+        }
+
+        &-chrono-label {
+            font-size: .685rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            display: block;
+        }
+
+        &-chrono-section {
+
+            position: relative;
+
+            &:not(:first-child) {
+            
+                &:before {
+                    display: inline-block;
+                    content: ":";
+                    font-size: 2.85rem;
+                    font-weight: 300;
+                    
+                    line-height: 1;
+                    vertical-align: top;
+                    /*position: absolute;
+                    top: 0px;
+                    right: 0px;
+                    transform: translateX(50%);
+                    left: 100%;
+                    width: 25%;
+                    height: 100%;*/
+                }
+
+            }
+
+            & > div {
+                display: inline-block;
+            }
+        }
+    }
+}

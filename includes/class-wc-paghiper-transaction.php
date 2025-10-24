@@ -37,7 +37,7 @@ class WC_PagHiper_Transaction {
 		$this->order_id = $order_id;
 
 		// Pegamos o pedido completo
-		$this->order = wc_get_order( $order_id );
+		$this->order = new WC_Order( $order_id );
 		$this->order_status = (strpos($this->order->get_status(), 'wc-') === false) ? 'wc-'.$this->order->get_status() : $this->order->get_status();
 
 		// Pega a configuração atual do plug-in.
@@ -795,7 +795,23 @@ class WC_PagHiper_Transaction {
 							$html .= "<img src='{$barcode_url}' title='Código de barras do PIX deste pedido.'>";
 							
 							if( !$conf || (is_array($conf) && in_array('due_date', $conf)) ) {
-								$html .= "<br>Data de vencimento: <strong>{$due_date}</strong>";
+
+								// Data, hora e minuto de vencimento do PIX, caso seja em minutos
+								$due_date_mode = isset($this->gateway_settings['due_date_mode']) ? $this->gateway_settings['due_date_mode'] : 'days';
+								if ($due_date_mode === 'minutes' && isset($this->gateway_settings['due_date_value'])) {
+									$minutes_due = intval($this->gateway_settings['due_date_value']);
+									$order_datetime = $this->order->get_date_created();
+									if ($order_datetime) {
+										$order_datetime->setTimezone($this->timezone);
+										$due_datetime = clone $order_datetime;
+										$due_datetime->modify("+{$minutes_due} minutes");
+										$due_time_formatted = $due_datetime->format('d/m/Y H:i');
+										$html .= "<br>Válido até: <strong>{$due_time_formatted}</strong>";
+									}
+								} else {
+									$html .= "<br>Válido até: <strong>{$due_date}</strong>";
+								}
+
 							}
 
 							$html .= "</div>";
@@ -835,11 +851,27 @@ class WC_PagHiper_Transaction {
 					}
 
 					if( !$conf || (is_array($conf) && in_array('due_date', $conf)) ) {
-						$html .= "<p style='width: 100%; text-align: center;'>Data de vencimento: <strong>{$due_date}</strong></p>";
+
+						// Data, hora e minuto de vencimento do PIX, caso seja em minutos
+						$due_date_mode = isset($this->gateway_settings['due_date_mode']) ? $this->gateway_settings['due_date_mode'] : 'days';
+						if ($due_date_mode === 'minutes' && isset($this->gateway_settings['due_date_value'])) {
+							$minutes_due = intval($this->gateway_settings['due_date_value']);
+							$order_datetime = $this->order->get_date_created();
+							if ($order_datetime) {
+								$order_datetime->setTimezone($this->timezone);
+								$due_datetime = clone $order_datetime;
+								$due_datetime->modify("+{$minutes_due} minutes");
+								$due_time_formatted = $due_datetime->format('d/m/Y H:i');
+								$html .= "<p style='width: 100%; text-align: center;'>Válido até: <strong>{$due_time_formatted}</strong></p>";
+							}
+						} else {
+							$html .= "<p style='width: 100%; text-align: center;'>Válido até: <strong>{$due_date}</strong></p>";
+						}
+
 					}
 					
 					if( !$conf || (is_array($conf) && in_array('digitable', $conf)) ) {
-						$html .= "<p style='width: 100%; text-align: center;'>Seu código PIX: {$digitable_line}</p>";
+						$html .= "<p style='width: 100%; text-align: center;'><strong>Seu código PIX</strong>: {$digitable_line}</p>";
 					}
 				}
 	

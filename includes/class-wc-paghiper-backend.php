@@ -42,7 +42,7 @@ class WC_Paghiper_Backend {
 		global $post;
 		if($post && $post->post_type == 'shop_order') {
 
-			$order = wc_get_order( $post->ID );
+			$order = new WC_Order( $post->ID );
 
 		} else {
 
@@ -51,7 +51,7 @@ class WC_Paghiper_Backend {
 
 			if( $current_page == 'wc-orders' && $current_action == 'edit' ) {
 				$order_id = absint( $_GET['id'] );
-				$order = wc_get_order( $order_id );
+				$order = new WC_Order( $order_id );
 
 			} else {
 				return;
@@ -96,7 +96,7 @@ class WC_Paghiper_Backend {
 	 */
 	public function metabox_content( $post_or_order_object ) {
 		// Get order data.
-		$order = ( $post_or_order_object instanceof WP_Post ) ? wc_get_order( $post_or_order_object->ID ) : $post_or_order_object;
+		$order = ( $post_or_order_object instanceof WP_Post ) ? new WC_Order( $post_or_order_object->ID ) : $post_or_order_object;
 
 		// Use nonce for verification.
 		wp_nonce_field( basename( __FILE__ ), 'woo_paghiper_metabox_nonce' );
@@ -203,7 +203,7 @@ class WC_Paghiper_Backend {
 			$today_date = new \DateTime();
 			$today_date->setTimezone($this->timezone);
 
-			$order = wc_get_order( $post_id );
+			$order = new WC_Order( $post_id );
 			$paghiper_data = $order->get_meta( 'wc_paghiper_data' ) ;
 			$new_due_date = DateTime::createFromFormat('d/m/Y', $input_date, $this->timezone);
 
