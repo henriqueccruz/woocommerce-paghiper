@@ -12,3 +12,7 @@ assets/src/static/php/cache/
 assets/src/certificates/wordpress.sandbox.local\+3-key.pem
 
 assets/src/certificates/wordpress.sandbox.local\+3.pem
+
+assets/dist/php/cache/
+
+assets/src/static/php/cache/
