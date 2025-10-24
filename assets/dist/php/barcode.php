@@ -66,14 +66,6 @@ function pintarbarras($mapaI25, $altura, $espmin) {
 }
 
 // Recupera o código e cria a imagem jpeg
-// For the WP Team: No nonce required as this was not generated via form and only numbers are allowed.
-if(array_key_exists('codigo', $_GET)) {
-	// Sanitiza o código recebido
-	// For the WP Team: wp_unslash can't be used here because this page doesn't interact with the WP installation. It just generates an image.
-	$codigo = preg_replace('/[^0-9]/', '', $_GET['codigo']);
-} else {
-	die('Código inválido.');
-}
-
+$codigo = $_GET['codigo'];	
 header("Content-Type: image/png");
 pintarbarras(codificar($codigo), 250, 1);

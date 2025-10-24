@@ -66,38 +66,234 @@ function checkForTaxIdFields() {
 				}
 			}
 
-		if(!hasTaxField && !hasPayerNameField) {
-			paghiperFieldsetContainer.classList.add('paghiper-hidden');
-		} else {
-			paghiperFieldsetContainer.classList.remove('paghiper-hidden');
-		}
+			if(!hasTaxField && !hasPayerNameField) {
+				paghiperFieldsetContainer.classList.add('paghiper-hidden');
+			} else {
+				paghiperFieldsetContainer.classList.remove('paghiper-hidden');
+			}
 	});
 
 }
 
+/**
+ * [LEGACY] Copia o código EMV para a área de transferência.
+ */
 window.copyPaghiperEmv = function() {
-	// Start with objects to be selected
 	let paghiperEmvBlock 	= document.querySelector('.paghiper-pix-code');
 	let targetPixCode 		= paghiperEmvBlock.querySelector('textarea');
 	let targetButton 		= paghiperEmvBlock.querySelector('button');
 
-	// Select the text field
 	targetPixCode.select();
-	targetPixCode.setSelectionRange(0, 99999); /* For mobile devices */
+	targetPixCode.setSelectionRange(0, 99999); // For mobile devices
   
-	// Copy the text inside the text field
 	navigator.clipboard.writeText(targetPixCode.value);
 
-	// Store selection range insie button dataset
 	targetButton.dataset.originalText = targetButton.innerHTML;
 	targetButton.innerHTML = 'Copiado!';
 
 	setTimeout(function(targetButton) {
-		// Restore original text from dataset store value
 		let originalText = targetButton.dataset.originalText;
 		targetButton.innerHTML = originalText;
-
-		// Remove selection range
 		document.getSelection().removeAllRanges();
 	}, 2000, targetButton,);
 };
+
+/**
+ * Copia um texto para a área de transferência de forma robusta.
+ * @param {string} text O texto a ser copiado.
+ * @returns {Promise<boolean>} Retorna true se bem-sucedido, e false caso contrário.
+ */
+async function copyTextToClipboard(text) {
+  if (navigator.clipboard && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (err) {
+      console.error('Falha ao copiar com a API moderna: ', err);
+    }
+  }
+
+  const textArea = document.createElement("textarea");
+  textArea.value = text;
+  textArea.style.position = "fixed";
+  textArea.style.top = "-9999px";
+  textArea.style.left = "-9999px";
+  document.body.appendChild(textArea);
+  textArea.focus();
+  textArea.select();
+
+  let success = false;
+  try {
+    success = document.execCommand('copy');
+  } catch (err) {
+    console.error('Erro ao tentar copiar com o método de fallback: ', err);
+  }
+
+  document.body.removeChild(textArea);
+  return success;
+}
+
+/**
+ * Exibe uma notificação flutuante.
+ * @param {object} options Opções para a notificação.
+ * @param {string} options.message A mensagem em texto ou HTML.
+ * @param {string} [options.type='info'] O tipo de notificação (success, error, info, warning).
+ * @param {number} [options.duration=3000] Duração em ms. Se 0, a notificação é fixa.
+ * @returns {HTMLElement|null} O elemento da notificação criado ou null.
+ */
+function showPhNotification(options) {
+  const { message, type = 'info', duration = 3000 } = options;
+  const container = document.getElementById('ph-reusable-notifications');
+  if (!container) return null;
+
+  const notification = document.createElement('div');
+  notification.className = `ph-notification ${type}`;
+  notification.innerHTML = message; // Permite HTML para ícones
+
+  container.appendChild(notification);
+
+  if (duration > 0) {
+    setTimeout(() => {
+      notification.classList.add('fade-out');
+      notification.addEventListener('animationend', () => {
+        notification.remove();
+      });
+    }, duration);
+  }
+
+  return notification;
+}
+
+/**
+ * Atualiza a área de checkout via AJAX para refletir o status mais recente do pedido.
+ */
+async function refreshCheckoutContent() {
+    const loadingSpinner = '<span class="ph-notification-spinner"></span>';
+    showPhNotification({
+        message: `${loadingSpinner} O tempo para pagamento pode ter expirado. Atualizando informações...`,
+        type: 'warning',
+        duration: 5000 // Mostra por 5s enquanto carrega
+    });
+
+    try {
+        const response = await fetch(window.location.href);
+        const html = await response.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        
+        const newContent = doc.querySelector('.ph-checkout-v2');
+        const currentContent = document.querySelector('.ph-checkout-v2');
+
+        if (newContent && currentContent) {
+            currentContent.innerHTML = newContent.innerHTML;
+            // Aqui, podemos reinicializar event listeners se necessário no futuro
+        } else {
+            window.location.reload(); // Recarrega a página se a análise falhar
+        }
+    } catch (error) {
+        console.error('Falha ao atualizar o conteúdo do checkout:', error);
+        window.location.reload(); // Recarrega em caso de erro
+    }
+}
+
+// Event Listeners para Checkout v2
+document.addEventListener('DOMContentLoaded', () => {
+  const copyButton = document.querySelector('.ph-checkout-v2__copy-code-button');
+  const qrContainer = document.querySelector('.ph-checkout-v2__qr-container');
+  const textContainer = document.querySelector('.ph-checkout-v2__copy-code-container .textarea-container');
+  
+  const handleCopyClick = async () => {
+    const textToCopy = document.querySelector('.ph-checkout-v2__copy-code-container .digitable_line_container')?.textContent.trim();
+    if (!textToCopy) return;
+
+    const success = await copyTextToClipboard(textToCopy);
+    if (success) {
+      showPhNotification({ message: 'Código PIX copiado com sucesso!', type: 'success' });
+      if(copyButton) {
+        const originalText = copyButton.dataset.originalText || copyButton.textContent;
+        if (!copyButton.dataset.originalText) {
+            copyButton.dataset.originalText = originalText;
+        }
+        copyButton.textContent = 'Copiado!';
+        setTimeout(() => {
+          copyButton.textContent = originalText;
+        }, 2000);
+      }
+    }
+  };
+
+  const handleSelectClick = (e) => {
+    const textDiv = e.currentTarget.querySelector('.digitable_line_container');
+    if (window.getSelection && document.createRange) {
+        const selection = window.getSelection();
+        const range = document.createRange();
+        range.selectNodeContents(textDiv);
+        selection.removeAllRanges();
+        selection.addRange(range);
+    }
+  };
+
+  if (copyButton) {
+    copyButton.addEventListener('click', handleCopyClick);
+  }
+  if (qrContainer) {
+    qrContainer.addEventListener('click', handleCopyClick);
+  }
+  if (textContainer) {
+    textContainer.addEventListener('click', handleSelectClick);
+  }
+
+  // Inicia a verificação de status de pagamento
+  const startPaymentStatusCheck = () => {
+    let notificationElement = null;
+    const orderId = ph_checkout_params?.order_id;
+    const nonce = ph_checkout_params?.nonce;
+
+    if (!orderId || !nonce) return;
+
+    const paymentCheckInterval = setInterval(() => {
+        
+        if (!notificationElement || !document.body.contains(notificationElement)) {
+            const loadingSpinner = '<span class="ph-notification-spinner"></span>';
+            notificationElement = showPhNotification({
+                message: `${loadingSpinner} Aguardando confirmação do pagamento...`,
+                type: 'info',
+                duration: 0 // Notificação Fixa
+            });
+        }
+
+        jQuery.post(ph_checkout_params.ajax_url, {
+            action: 'paghiper_check_payment_status',
+            security: nonce,
+            order_id: orderId
+        }, function(response) {
+            if (response.success) {
+                if (response.data.status === 'paid') {
+                    clearInterval(paymentCheckInterval);
+                    if (notificationElement) {
+                        notificationElement.remove();
+                    }
+                    showPhNotification({ 
+                        message: 'Pagamento confirmado com sucesso!', 
+                        type: 'success', 
+                        duration: 5000 
+                    });
+                    
+                    setTimeout(() => {
+                        refreshCheckoutContent();
+                    }, 1000);
+                }
+            } else {
+                clearInterval(paymentCheckInterval);
+                console.error('Erro ao verificar status do pagamento:', response.data.message);
+            }
+        });
+
+    }, 10000);
+  };
+
+  // Inicia o polling apenas na página de checkout v2 com os parâmetros corretos
+  if (document.querySelector('.ph-checkout-v2') && typeof ph_checkout_params !== 'undefined') {
+      startPaymentStatusCheck();
+  }
+});

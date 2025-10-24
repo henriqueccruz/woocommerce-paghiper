@@ -824,84 +824,78 @@ class WC_Paghiper_Base_Gateway {
 			return;
 		}
 
-		// Mostra o contador regressivo para PIX em minutos
-		if ($order_payment_method === 'paghiper_pix' && $this->due_date_mode === 'minutes') {
-			$order_data = $order->get_meta('wc_paghiper_data');
-			if (!empty($order_data['order_transaction_due_datetime'])) {
-				
-				wp_enqueue_script('simply-countdown');
-
-				$due_datetime = new DateTime($order_data['order_transaction_due_datetime'], $this->timezone);
-				
-				$year = $due_datetime->format('Y');
-				$month = $due_datetime->format('m');
-				$day = $due_datetime->format('d');
-				$hour = $due_datetime->format('H');
-				$minute = $due_datetime->format('i');
-				$second = $due_datetime->format('s');
-
-				$html = '<div class="paghiper-countdown-wrapper" style="text-align: center; margin-bottom: 20px;">';
-				$html .= '<p>Seu pedido está reservado para você por:</p>';
-				$html .= '<div id="paghiper-pix-countdown" class="include-fonts"></div>';
-				$html .= '</div>';
-
-				$html .= "<script>
-					document.addEventListener('DOMContentLoaded', function() {
-						simplyCountdown('#paghiper-pix-countdown', {
-							year: {$year},
-							month: {$month},
-							day: {$day},
-							hours: {$hour},
-							minutes: {$minute},
-							seconds: {$second},
-							words: {
-								days: { root: 'dia', lambda: (root, n) => n > 1 ? root + 's' : root },
-								hours: { root: 'hora', lambda: (root, n) => n > 1 ? root + 's' : root },
-								minutes: { root: 'minuto', lambda: (root, n) => n > 1 ? root + 's' : root },
-								seconds: { root: 'segundo', lambda: (root, n) => n > 1 ? root + 's' : root }
-							},
-							plural: true,
-							zeroPad: true,
-							enableUtc: false,
-							sectionClass: 'paghiper-chrono-section',
-							amountClass: 'paghiper-chrono-amount',
-							wordClass: 'paghiper-chrono-label',
-						});
-					});
-				</script>";
-				
-				echo $html;
-			}
-		}
-
 		require_once WC_Paghiper::get_plugin_path() . 'includes/class-wc-paghiper-transaction.php';
-
 		$paghiperTransaction = new WC_PagHiper_Transaction( $order_id );
-		$paghiperTransaction->printBarCode(true);
 
-		if($order->get_payment_method() !== 'paghiper_pix') {
+		// Ensure transaction is created and data is available
+		$barcode = $paghiperTransaction->printBarCode();
 
-			$html = '<div class="woocommerce-message">';
-			$html .= sprintf( '<a class="button button-primary wc-forward" href="%s" target="_blank" style="display: block !important; visibility: visible !important;">%s</a>', esc_url( wc_paghiper_get_paghiper_url( $order->get_order_key() ) ), __( 'Pagar o Boleto', 'woo-boleto-paghiper' ) );
-	
-			/* translators: %1$s: HTML opening tag, %2$s: HTML closing tag. */
-			$message = sprintf( __( '%1$sAtenção!%2$s Você NÃO vai receber o boleto pelos Correios.', 'woo-boleto-paghiper' ), '<strong>', '</strong>' ) . '<br />';
-			$message .= __( 'Clique no link abaixo e pague o boleto pelo seu aplicativo de Internet Banking .', 'woo-boleto-paghiper' ) . '<br />';
-			$message .= __( 'Se preferir, você pode imprimir e pagar o boleto em qualquer agência bancária ou lotérica.', 'woo-boleto-paghiper' ) . '<br />';
-	
-			$html .= apply_filters( 'woo_paghiper_thankyou_page_message', $message );
+		if($barcode && !$paghiperTransaction->is_payment_expired()) {
 
-			$transaction_due_date = new DateTime;
-			$transaction_due_date->setTimezone($this->timezone);
-			$transaction_due_date->modify( "+{$this->days_due_date} days" );
-	
-			/* translators: %s: Billet due date. */
-			$html .= '<strong style="display: block; margin-top: 15px; font-size: 0.8em">' . sprintf( __( 'Data de vencimento do Boleto: %s.', 'woo-boleto-paghiper' ), $transaction_due_date->format('Y-m-d') ) . '</strong>';
-	
-			$html .= '</div>';
-	
-			echo wp_kses_post($html);
+			// Make variables available for the templates
+			$due_date_mode = $this->due_date_mode;
+			$timezone = $this->timezone;
+			$days_due_date = $this->days_due_date;
 
+			// Decide which checkout template to load. v2 is the default.
+			// A filter allows developers to force the v1 (legacy) template.
+			$use_legacy_checkout = apply_filters('paghiper_use_legacy_checkout', false, $order);
+
+			if ($use_legacy_checkout) {
+				$template_path = WC_Paghiper::get_plugin_path() . 'includes/views/checkout/html-checkout-v1.php';
+			} else {
+				$template_path = WC_Paghiper::get_plugin_path() . 'includes/views/checkout/html-checkout-v2.php';
+			}
+
+			if ( file_exists( $template_path ) ) {
+				include $template_path;
+			} else {
+				echo '<p>' . __( 'Erro ao carregar as instruções de pagamento. Arquivo de template não encontrado.', 'woo-boleto-paghiper' ) . '</p>';
+			}
+
+		} else {
+
+			// Checamos se o pagamento já foi concluído
+			if ($paghiperTransaction->is_payment_completed()) {
+
+				$template_path = WC_Paghiper::get_plugin_path() . 'includes/views/checkout/html-order-completed.php';
+
+				if ( file_exists( $template_path ) ) {
+					include $template_path;
+				} else {
+					echo '<p>' . __( 'Erro ao carregar as instruções de pagamento. Por favor, entre em contato com o suporte.', 'woo-boleto-paghiper' ) . '</p>';
+				}
+
+			} else {
+
+				// Checamos se o pagamento está expirado
+				if ($paghiperTransaction->is_payment_expired()) {
+
+					$template_path = WC_Paghiper::get_plugin_path() . 'includes/views/checkout/html-order-expired.php';
+					if ( file_exists( $template_path ) ) {
+						include $template_path;
+					} else {
+						echo '<p>' . __( 'Erro ao carregar as instruções de pagamento. Por favor, entre em contato com o suporte.', 'woo-boleto-paghiper' ) . '</p>';
+					}
+					
+					return;
+				} else {
+					
+					// Fallback error message
+					if ( $this->log ) {
+						wc_paghiper_add_log( 
+							$this->log, 
+							/* translators: %s: Transaction type. May be PIX or billet, for an example. */
+							sprintf( 'Pedido #%s: Não foi possível recuperar as instruções de pagamento.', 
+								$order_id, 
+								($this->isPIX ? 'PIX' : 'boleto'), 
+							) 
+						);
+					}
+
+					echo '<p>' . __( 'Erro ao recuperar as instruções de pagamento. Por favor, entre em contato com o suporte.', 'woo-boleto-paghiper' ) . '</p>';
+				}
+			}
 		}
 	}
 
