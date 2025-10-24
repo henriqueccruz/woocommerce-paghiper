@@ -166,6 +166,7 @@ class WC_Paghiper {
 	 */
 	private function includes() {
 
+		include_once 'includes/class-wc-paghiper-frontend.php';
 		include_once 'includes/wc-paghiper-functions.php';
 		include_once 'includes/wc-paghiper-notification.php';
 		include_once 'includes/class-wc-paghiper-billet-gateway.php';

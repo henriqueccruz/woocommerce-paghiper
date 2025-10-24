@@ -16,6 +16,17 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit; // Exit if accessed directly.
 }
 
+global $wp;
+$order_id = isset($wp->query_vars['order-received']) ? $wp->query_vars['order-received'] : 0;
+?>
+<script>
+    var ph_checkout_params = {
+        'ajax_url': '<?php echo admin_url('admin-ajax.php'); ?>',
+        'order_id': '<?php echo $order_id; ?>',
+        'nonce': '<?php echo wp_create_nonce('paghiper_payment_status_nonce'); ?>'
+    };
+</script>
+<?php
 $gateway_id = $order->get_payment_method();
 
 // This template is designed for PIX. You can expand it to handle billets as well.
@@ -79,7 +90,7 @@ if ($gateway_id === 'paghiper_pix' && $due_date_mode_pix === 'minutes') {
 }
 
 ?>
-<div class="ph-checkout-v2">
+<div class="ph-checkout-v2" data-status="pending">
     <div class="ph-checkout-v2__container">
         
         <?php
@@ -147,7 +158,7 @@ if ($gateway_id === 'paghiper_pix' && $due_date_mode_pix === 'minutes') {
 
             <div class="ph-checkout-v2__details">
                 <p class="ph-checkout-v2__amount"><?php echo $total; ?></p>
-                <p class="ph-checkout-v2__due-date">
+                <p class="ph-checkout-v2__description">
                     <?php printf(__('Vence em %s', 'woo-boleto-paghiper'), $due_date_display_str); ?>
                     <?php if (!empty($due_date_timer_str)) : ?>
                         <span class="ph-checkout-v2__due-date-timer"><?php echo esc_html($due_date_timer_str); ?></span>
@@ -160,9 +171,15 @@ if ($gateway_id === 'paghiper_pix' && $due_date_mode_pix === 'minutes') {
                             <?php echo esc_html($digitable_line); ?>
                         </div>
                     </div>
-                    <p>
-                        <button type="button" class="ph-checkout-v2__copy-code-button"><?php _e('Copiar PIX', 'woo-boleto-paghiper'); ?></button>
-                    </p>
+                </div>
+
+                <div class="ph-checkout-v2__button-group">
+                    <button type="button" id="ph-i-paid-button" class="ph-checkout-v2__secondary-button">
+                        <?php _e('Já fiz meu pagamento', 'woo-boleto-paghiper'); ?>
+                    </button>
+                    <button type="button" class="ph-checkout-v2__copy-code-button">
+                        <?php _e('Copiar PIX', 'woo-boleto-paghiper'); ?>
+                    </button>
                 </div>
             </div>
         </div>

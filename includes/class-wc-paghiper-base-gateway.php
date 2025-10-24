@@ -263,6 +263,14 @@ class WC_Paghiper_Base_Gateway {
 				'title' => __( 'Configurações extra', 'woo-boleto-paghiper' ),
 				'type'  => 'title'
 			),
+			'disable_email_gif' => array(
+				'title'       => __( 'Desativar cronômetro no e-mail?', 'woo-boleto-paghiper' ),
+				'type'        => 'checkbox',
+				'label'       => __( 'Ativar/Desativar', 'woo-boleto-paghiper' ),
+				'description' => __( 'Para vencimentos acima de 24h, o cronômetro GIF é sempre desativado. Para vencimentos menores, você pode desativá-lo aqui se desejar.', 'woo-boleto-paghiper' ),
+				'desc_tip'    => true,
+				'default'     => 'no'
+			),
 			'replenish_stock' => array(
 				'title'   => __( 'Restituir estoque, caso o pedido seja cancelado?', 'woo-boleto-paghiper' ),
 				'type'    => 'checkbox',
@@ -858,7 +866,7 @@ class WC_Paghiper_Base_Gateway {
 			// Checamos se o pagamento já foi concluído
 			if ($paghiperTransaction->is_payment_completed()) {
 
-				$template_path = WC_Paghiper::get_plugin_path() . 'includes/views/checkout/html-order-completed.php';
+				$template_path = WC_Paghiper::get_plugin_path() . 'includes/views/checkout/html-payment-completed.php';
 
 				if ( file_exists( $template_path ) ) {
 					include $template_path;
@@ -871,7 +879,7 @@ class WC_Paghiper_Base_Gateway {
 				// Checamos se o pagamento está expirado
 				if ($paghiperTransaction->is_payment_expired()) {
 
-					$template_path = WC_Paghiper::get_plugin_path() . 'includes/views/checkout/html-order-expired.php';
+					$template_path = WC_Paghiper::get_plugin_path() . 'includes/views/checkout/html-payment-expired.php';
 					if ( file_exists( $template_path ) ) {
 						include $template_path;
 					} else {
@@ -880,7 +888,7 @@ class WC_Paghiper_Base_Gateway {
 					
 					return;
 				} else {
-					
+
 					// Fallback error message
 					if ( $this->log ) {
 						wc_paghiper_add_log( 
@@ -950,16 +958,21 @@ class WC_Paghiper_Base_Gateway {
 		} else {
 			// Adiciona o contador regressivo para PIX em minutos no e-mail
 			if ($this->due_date_mode === 'minutes') {
-				$order_data = $order->get_meta('wc_paghiper_data');
-				if (!empty($order_data['order_transaction_due_datetime'])) {
-					$due_datetime = new DateTime($order_data['order_transaction_due_datetime'], $this->timezone);
-					$timestamp = $due_datetime->getTimestamp();
-					
-					$countdown_url_base = wc_paghiper_assets_url('php/countdown.php');
-					$countdown_url = add_query_arg('order_due_time', $timestamp, $countdown_url_base);
+				$disable_gif = $this->gateway->get_option('disable_email_gif') === 'yes';
+				$is_over_24h = intval($this->due_date_value) > 1440; // 24h * 60m
 
-					$message .= '<p style="text-align:center;margin-top:15px;"><strong>Seu pedido expira em:</strong><br>';
-					$message .= '<img src="' . esc_url($countdown_url) . '" alt="Contador de Vencimento" /></p>';
+				if (!$disable_gif && !$is_over_24h) {
+					$order_data = $order->get_meta('wc_paghiper_data');
+					if (!empty($order_data['order_transaction_due_datetime'])) {
+						$due_datetime = new DateTime($order_data['order_transaction_due_datetime'], $this->timezone);
+						$timestamp = $due_datetime->getTimestamp();
+						
+						$countdown_url_base = wc_paghiper_assets_url('php/countdown.php');
+						$countdown_url = add_query_arg('order_due_time', $timestamp, $countdown_url_base);
+
+						$message .= '<p style="text-align:center;margin-top:15px;"><strong>Seu pedido expira em:</strong><br>';
+						$message .= '<img src="' . esc_url($countdown_url) . '" alt="Contador de Vencimento" /></p>';
+					}
 				}
 			}
 			$html .= apply_filters( 'woo_paghiper_email_instructions', $message );

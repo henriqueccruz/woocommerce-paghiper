@@ -15,29 +15,69 @@ class WC_Paghiper_Frontend {
         add_action('wp_enqueue_scripts', array($this, 'enqueue_scripts'));
         add_action('wp_ajax_paghiper_check_payment_status', array($this, 'ajax_check_payment_status'));
         add_action('wp_ajax_nopriv_paghiper_check_payment_status', array($this, 'ajax_check_payment_status'));
+        add_action('wp_ajax_paghiper_restore_cart', array($this, 'ajax_restore_cart'));
+        add_action('wp_ajax_nopriv_paghiper_restore_cart', array($this, 'ajax_restore_cart'));
+    }
+
+    public function ajax_restore_cart() {
+        check_ajax_referer('paghiper_payment_status_nonce', 'security');
+
+        $order_id = isset($_POST['order_id']) ? intval($_POST['order_id']) : 0;
+        if (!$order_id) {
+            wp_send_json_error(['message' => 'Order ID not found.']);
+            return;
+        }
+
+        $order = wc_get_order($order_id);
+        if (!$order) {
+            wp_send_json_error(['message' => 'Order not found.']);
+            return;
+        }
+
+        // Limpa o carrinho atual
+        WC()->cart->empty_cart();
+
+        // Adiciona os produtos de volta ao carrinho, incluindo meta dados customizados
+        foreach ($order->get_items() as $item_id => $item) {
+            $product_id   = $item->get_product_id();
+            $quantity     = $item->get_quantity();
+            $variation_id = $item->get_variation_id();
+            
+            $variations = [];
+            if ($variation_id) {
+                $product_variation = wc_get_product($variation_id);
+                if ($product_variation) {
+                    $variations = $product_variation->get_variation_attributes();
+                }
+            }
+
+            // Recria os dados customizados do item (essencial para add-ons)
+            $cart_item_data = [];
+            foreach ($item->get_meta_data() as $meta) {
+                $meta_data = $meta->get_data();
+                if (substr($meta_data['key'], 0, 1) !== '_' && $meta_data['key'] !== 'variation') {
+                    $cart_item_data[$meta_data['key']] = $meta_data['value'];
+                }
+            }
+            
+            WC()->cart->add_to_cart($product_id, $quantity, $variation_id, $variations, $cart_item_data);
+        }
+
+        // Re-aplica os cupons
+        foreach ($order->get_coupon_codes() as $coupon_code) {
+            WC()->cart->apply_coupon($coupon_code);
+        }
+
+        // Recalcula os totais
+        WC()->cart->calculate_totals();
+
+        // Retorna a URL do checkout para redirecionamento
+        wp_send_json_success(['redirect_url' => wc_get_checkout_url()]);
     }
 
     public function enqueue_scripts() {
-        // We only need these scripts on the order received page
-        if (!is_wc_endpoint_url('order-received')) {
-            return;
-        }
-
-        global $wp;
-        $order_id = isset($wp->query_vars['order-received']) ? $wp->query_vars['order-received'] : 0;
-        $order = wc_get_order($order_id);
-
-        // Don't enqueue if it's not a PagHiper order
-        if (!$order || strpos($order->get_payment_method(), 'paghiper') === false) {
-            return;
-        }
-
-        // Pass data to our script
-        wp_localize_script('paghiper-frontend-js', 'ph_checkout_params', array(
-            'ajax_url' => admin_url('admin-ajax.php'),
-            'order_id' => $order_id,
-            'nonce'    => wp_create_nonce('paghiper_payment_status_nonce')
-        ));
+        // A localização dos scripts agora é feita diretamente nos templates de view
+        // para garantir que os dados estejam sempre presentes quando o script for executado.
     }
 
     public function ajax_check_payment_status() {

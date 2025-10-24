@@ -292,8 +292,159 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 10000);
   };
 
-  // Inicia o polling apenas na página de checkout v2 com os parâmetros corretos
-  if (document.querySelector('.ph-checkout-v2') && typeof ph_checkout_params !== 'undefined') {
+  // Inicia o polling apenas na página de checkout v2 com status pendente
+  if (document.querySelector('.ph-checkout-v2[data-status="pending"]') && typeof ph_checkout_params !== 'undefined') {
       startPaymentStatusCheck();
   }
+
+  const iPaidButton = document.getElementById('ph-i-paid-button');
+  if (iPaidButton) {
+      iPaidButton.addEventListener('click', () => {
+          manualPaymentCheck();
+      });
+  }
+
+  const restoreCartButton = document.getElementById('ph-restore-cart-button');
+  if (restoreCartButton) {
+    restoreCartButton.addEventListener('click', () => {
+        const orderId = ph_checkout_params?.order_id;
+        const nonce = ph_checkout_params?.nonce;
+        if (!orderId || !nonce) return;
+
+        const loadingSpinner = '<span class="ph-notification-spinner" style="border-top-color: #fff;"></span>';
+        
+        const notification = showPhNotification({
+            message: `${loadingSpinner} Restaurando seu carrinho...`,
+            type: 'info',
+            duration: 0 // Fixa
+        });
+
+        jQuery.post(ph_checkout_params.ajax_url, {
+            action: 'paghiper_restore_cart',
+            security: nonce,
+            order_id: orderId
+        }, function(response) {
+            if (response.success) {
+                if (notification) {
+                    notification.innerHTML = `${loadingSpinner} Redirecionando você para a tela de checkout...`;
+                }
+                
+                setTimeout(() => {
+                    window.location.href = response.data.redirect_url;
+                }, 2000);
+
+            } else {
+                if (notification) notification.remove();
+                showPhNotification({
+                    message: 'Ocorreu um erro ao tentar restaurar seu carrinho. Por favor, tente novamente.',
+                    type: 'error'
+                });
+            }
+        });
+    });
+  }
 });
+
+let isCheckingManually = false;
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function animateNotificationText(notificationElement, textElement, messages, displayDuration, deleteDuration, typeDuration) {
+    let currentIndex = 0;
+    const loadingSpinner = '<span class="ph-notification-spinner"></span>';
+
+    const cycle = async () => {
+        if (!document.body.contains(notificationElement)) return;
+
+        await sleep(displayDuration);
+        if (!document.body.contains(notificationElement)) return;
+
+        const currentText = messages[currentIndex];
+        for (let i = currentText.length; i >= 0; i--) {
+            if (!document.body.contains(notificationElement)) return;
+            textElement.textContent = currentText.substring(0, i);
+            await sleep(deleteDuration / currentText.length);
+        }
+
+        currentIndex = (currentIndex + 1) % messages.length;
+        const nextText = messages[currentIndex];
+
+        for (let i = 0; i < nextText.length; i++) {
+            if (!document.body.contains(notificationElement)) return;
+            textElement.textContent += nextText[i];
+            await sleep(typeDuration / nextText.length);
+        }
+
+        cycle();
+    };
+
+    cycle();
+}
+
+const manualPaymentCheck = () => {
+    if (isCheckingManually) return;
+    isCheckingManually = true;
+
+    const iPaidButton = document.getElementById('ph-i-paid-button');
+    if (iPaidButton) iPaidButton.disabled = true;
+
+    const orderId = ph_checkout_params?.order_id;
+    const nonce = ph_checkout_params?.nonce;
+    if (!orderId || !nonce) {
+        isCheckingManually = false;
+        if (iPaidButton) iPaidButton.disabled = false;
+        return;
+    }
+
+    const loadingSpinner = '<span class="ph-notification-spinner"></span>';
+    const textMessages = [
+        'Estamos confirmando seu pagamento, só um instante...',
+        'Às vezes o banco leva um tempinho para nos notificar.',
+        'Não se preocupe, vamos continuar verificando por aqui.'
+    ];
+
+    const notification = showPhNotification({
+        message: `${loadingSpinner} <span>${textMessages[0]}</span>`,
+        type: 'warning',
+        duration: 0 // Fixa
+    });
+
+    const textElement = notification.querySelector('span:last-child');
+    animateNotificationText(notification, textElement, textMessages, 6000, 250, 1000);
+
+    const checkRunner = () => {
+        jQuery.post(ph_checkout_params.ajax_url, {
+            action: 'paghiper_check_payment_status',
+            security: nonce,
+            order_id: orderId
+        }, function(response) {
+            if (response.success && response.data.status === 'paid') {
+                clearInterval(manualCheckInterval);
+                clearTimeout(manualCheckTimeout);
+                notification.remove(); // Isso irá parar o loop de animação
+                showPhNotification({ message: 'Pagamento confirmado!', type: 'success' });
+                setTimeout(() => {
+                    if (typeof refreshCheckoutContent === 'function') {
+                        refreshCheckoutContent();
+                    } else {
+                        window.location.reload();
+                    }
+                }, 1000);
+            }
+        });
+    };
+
+    const manualCheckInterval = setInterval(checkRunner, 15000);
+
+    const manualCheckTimeout = setTimeout(() => {
+        clearInterval(manualCheckInterval);
+        notification.remove(); // Isso irá parar o loop de animação
+        showPhNotification({ message: 'Ainda não recebemos a confirmação do seu pagamento.', type: 'error' });
+        isCheckingManually = false;
+        if (iPaidButton) iPaidButton.disabled = false;
+    }, 1800000); // 30 minutos
+
+    checkRunner();
+};

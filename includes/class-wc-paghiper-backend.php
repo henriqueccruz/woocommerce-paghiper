@@ -102,78 +102,93 @@ class WC_Paghiper_Backend {
 		wp_nonce_field( basename( __FILE__ ), 'woo_paghiper_metabox_nonce' );
 		$gateway_name = $order->get_payment_method();
 
-		if ( in_array($gateway_name, ['paghiper', 'paghiper_pix', 'paghiper_billet']) ) {
-			$paghiper_data = $order->get_meta( 'wc_paghiper_data' ) ;
+		if ( !in_array($gateway_name, ['paghiper', 'paghiper_pix', 'paghiper_billet']) ) {
+			echo '<p>' . __( 'Este pedido não foi efetuado com um método de pagamento PagHiper.', 'woo_paghiper' ) . '</p>';
+			return;
+		}
 
-			// Compatibility with pre v2.1 keys
-			if( isset($paghiper_data['order_billet_due_date']) && !isset($paghiper_data['order_transaction_due_date']) ) {
-				$paghiper_data['order_transaction_due_date'] = $paghiper_data['order_billet_due_date'];
+		$paghiper_data = $order->get_meta( 'wc_paghiper_data' );
+		$settings = ($gateway_name == 'paghiper_pix') ? get_option( 'woocommerce_paghiper_pix_settings' ) : get_option( 'woocommerce_paghiper_billet_settings' );
+		$due_date_mode = isset($settings['due_date_mode']) ? $settings['due_date_mode'] : 'days';
+
+		require_once WC_Paghiper::get_plugin_path() . 'includes/class-wc-paghiper-transaction.php';
+		$paghiperTransaction = new WC_PagHiper_Transaction( $order->get_id() );
+
+		// Determine Status
+		$paghiper_status = isset($paghiper_data['status']) ? $paghiper_data['status'] : 'pending';
+		$paid_statuses = ['paid', 'completed', 'processing', 'available', 'received'];
+		if (!empty($settings['set_status_when_paid'])) {
+			$paid_statuses[] = $settings['set_status_when_paid'];
+		}
+		$paid_statuses = apply_filters('woo_paghiper_paid_statuses', array_unique($paid_statuses), $order);
+
+		$is_paid = in_array($paghiper_status, $paid_statuses);
+		$is_expired = !$is_paid && $paghiperTransaction->is_payment_expired();
+
+		$html = '';
+
+		// Inline styles for status placeholders
+		$html .= '<style>
+			.ph-checkout-v2__status-placeholder { margin: 0 auto 20px; width: 120px; height: 120px; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
+			.ph-checkout-v2__status-placeholder svg { width: 60px; height: 60px; }
+			.ph-checkout-v2__status-placeholder.completed { background-color: #E6F2E8; color: #28a745; }
+			.ph-checkout-v2__status-placeholder.expired { background-color: #FFF0F0; color: #dc3545; }
+		</style>';
+
+		if ($is_paid) {
+			$html .= '<div class="ph-checkout-v2__status-placeholder completed"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" role="img" aria-hidden="true"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z" clip-rule="evenodd" /></svg></div>';
+			$html .= '<p style="text-align:center; font-weight: bold;">' . __('Pagamento Aprovado', 'woo_paghiper') . '</p>';
+		} else {
+			if ($is_expired) {
+				$html .= '<div class="ph-checkout-v2__status-placeholder expired"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" role="img" aria-hidden="true"><path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zM12.75 6a.75.75 0 00-1.5 0v6c0 .414.336.75.75.75h4.5a.75.75 0 000-1.5h-3.75V6z" clip-rule="evenodd" /></svg></div>';
+			} else {
+				$html .= $paghiperTransaction->printBarCode(false, true, ['code', 'digitable']);
 			}
 
-			// Save the ticket data if don't have.
-			if ( !isset($paghiper_data['order_transaction_due_date']) ) {
+			if ($gateway_name === 'paghiper_pix' && $due_date_mode === 'minutes' && !$is_expired) {
+				if (!empty($paghiper_data['order_transaction_due_datetime'])) {
+					wp_enqueue_script('simply-countdown');
+					$due_datetime = new DateTime($paghiper_data['order_transaction_due_datetime'], $this->timezone);
+					$year = $due_datetime->format('Y'); $month = $due_datetime->format('m'); $day = $due_datetime->format('d');
+					$hour = $due_datetime->format('H'); $minute = $due_datetime->format('i'); $second = $due_datetime->format('s');
 
-				// Pega a configuração atual do plug-in.
-				$settings = ($gateway_name == 'paghiper_pix') ? get_option( 'woocommerce_paghiper_pix_settings' ) : get_option( 'woocommerce_paghiper_billet_settings' );
-
-				$order_transaction_due_date			= isset( $settings['days_due_date'] ) ? absint( $settings['days_due_date'] ) : 5;
-				$data                   			= array();
-				$data['order_transaction_due_date']	= date( 'Y-m-d', time() + ( $order_transaction_due_date * 86400 ) );
-				
-				$order->update_meta_data( 'wc_paghiper_data', $data );
-				$order->save();
-				
-				if(function_exists('update_meta_cache'))
-					update_meta_cache( 'shop_order', $order->get_id() );
-
-				$paghiper_data['order_transaction_due_date'] = $data['order_transaction_due_date'];
+					$html .= '<p><strong>' . __( 'Vencimento do PIX:', 'woo_paghiper' ) . '</strong></p>';
+					$html .= '<div id="paghiper-pix-countdown" class="include-fonts"></div>';
+					$html .= "<script>document.addEventListener('DOMContentLoaded',function(){simplyCountdown('#paghiper-pix-countdown',{year:{$year},month:{$month},day:{$day},hours:{$hour},minutes:{$minute},seconds:{$second},plural:true,zeroPad:true,enableUtc:false,});});</script>";
+				}
+			} else {
+				$due_date_to_format = $is_expired ? $paghiper_data['current_transaction_due_date'] : $paghiper_data['order_transaction_due_date'];
+				$order_transaction_due_date = DateTime::createFromFormat('Y-m-d', $due_date_to_format, $this->timezone);
+				$formatted_due_date = ($order_transaction_due_date) ? $order_transaction_due_date->format('d/m/Y') : '--';
+				$html .= '<p><strong>' . ($is_expired ? __('Expirou em:', 'woo_paghiper') : __('Data de Vencimento:', 'woo_paghiper')) . '</strong> ' . $formatted_due_date . '</p>';
 			}
 
-			require_once WC_Paghiper::get_plugin_path() . 'includes/class-wc-paghiper-transaction.php';
-
-			$paghiperTransaction = new WC_PagHiper_Transaction( $order->get_id() );
-			$html = $paghiperTransaction->printBarCode(false, true, ['code', 'digitable']);
-
-			$order_transaction_due_date = DateTime::createFromFormat('Y-m-d', $paghiper_data['order_transaction_due_date'], $this->timezone);
-			$formatted_due_date = ($order_transaction_due_date) ? $order_transaction_due_date->format('d/m/Y') : sprintf(__("%s indisponível"), (($gateway_name == 'paghiper_pix') ? __("PIX") : __("Boleto")));
-
-			$html .= '<p><strong>' . __( 'Data de Vencimento:', 'woo_paghiper' ) . '</strong> ' . $formatted_due_date . '</p>';
-
-			if($gateway_name !== 'paghiper_pix')
-			$html .= '<p><strong>' . __( 'URL:', 'woo_paghiper' ) . '</strong> <a target="_blank" href="' . esc_url( wc_paghiper_get_paghiper_url( $order->get_order_key() ) ) . '">' . __( 'Visualizar boleto', 'woo_paghiper' ) . '</a></p>';
+			if($gateway_name !== 'paghiper_pix') {
+				$html .= '<p><strong>' . __( 'URL:', 'woo_paghiper' ) . '</strong> <a target="_blank" href="' . esc_url( wc_paghiper_get_paghiper_url( $order->get_order_key() ) ) . '">' . __( 'Visualizar boleto', 'woo_paghiper' ) . '</a></p>';
+			}
 
 			$html .= '<p style="border-top: 1px solid #ccc;"></p>';
-
 			$html .= '<label for="woo_paghiper_expiration_date">' . __( 'Digite uma nova data de vencimento:', 'woo_paghiper' ) . '</label><br />';
-			$html .= '<input type="text" id="woo_paghiper_expiration_date" name="woo_paghiper_expiration_date" class="date" style="width: 100%;" />';
-			$html .= '<span class="description">' . sprintf(__( 'Ao configurar uma nova data de vencimento, o %s é re-enviado ao cliente por e-mail.', 'woo_paghiper' ), (($gateway_name !== 'paghiper_pix') ? 'boleto' : 'PIX')) . '</span>';
-
-			// Show errors related to user input (invalid or past inputted dates)
-			if ( $error = get_transient( "woo_paghiper_save_order_errors_{$order->get_id()}" ) ) {
-
-				$html .= sprintf('<div class="error"><p>%s</p></div>', $error); 
-				delete_transient("woo_paghiper_save_order_errors_{$order->get_id()}");
-
+			if ($gateway_name === 'paghiper_pix' && $due_date_mode === 'minutes') {
+				$html .= '<input type="text" id="woo_paghiper_expiration_date" name="woo_paghiper_expiration_date" class="datetime" style="width: 100%;" placeholder="dd/mm/aaaa HH:mm" />';
+				$html .= '<span class="description">' . __( 'Formato: dd/mm/aaaa HH:mm. Ao configurar, o PIX é re-enviado ao cliente.', 'woo_paghiper' ) . '</span>';
+			} else {
+				$html .= '<input type="text" id="woo_paghiper_expiration_date" name="woo_paghiper_expiration_date" class="date" style="width: 100%;" />';
+				$html .= '<span class="description">' . sprintf(__( 'Ao configurar uma nova data de vencimento, o %s é re-enviado ao cliente por e-mail.', 'woo_paghiper' ), (($gateway_name !== 'paghiper_pix') ? 'boleto' : 'PIX')) . '</span>';
 			}
+		}
 
-			
-			// Show due date errors (set on weekend, skipped to monday)
-			if ( $error = get_transient( "woo_paghiper_due_date_order_errors_{$order->get_id()}" ) ) {
+		if ( $error = get_transient( "woo_paghiper_save_order_errors_{$order->get_id()}" ) ) {
+			$html .= sprintf('<div class="error"><p>%s</p></div>', $error); 
+			delete_transient("woo_paghiper_save_order_errors_{$order->get_id()}");
+		}
 
-				$html .= sprintf('<div class="error"><p>%s</p></div>', $error); 
-
-			}
-
-
-		} else {
-			$html = '<p>' . __( 'Este pedido não foi efetuado ou pago com boleto.', 'woo_paghiper' ) . '</p>';
-			$html .= '<style>#woo_paghiper.postbox {display: none;}</style>';
+		if ( $error = get_transient( "woo_paghiper_due_date_order_errors_{$order->get_id()}" ) ) {
+			$html .= sprintf('<div class="error"><p>%s</p></div>', $error); 
 		}
 
 		echo $html;
-
 	}
-
 	/**
 	 * Save metabox data.
 	 *
@@ -197,35 +212,38 @@ class WC_Paghiper_Backend {
 
 		if ( isset( $_POST['woo_paghiper_expiration_date'] ) && ! empty( $_POST['woo_paghiper_expiration_date'] ) ) {
 
-			// Store our input on a var for later use
 			$input_date = sanitize_text_field( trim($_POST['woo_paghiper_expiration_date']) );
-
-			$today_date = new \DateTime();
-			$today_date->setTimezone($this->timezone);
-
 			$order = new WC_Order( $post_id );
-			$paghiper_data = $order->get_meta( 'wc_paghiper_data' ) ;
-			$new_due_date = DateTime::createFromFormat('d/m/Y', $input_date, $this->timezone);
+			$gateway_name = $order->get_payment_method();
+			$settings = ($gateway_name == 'paghiper_pix') ? get_option( 'woocommerce_paghiper_pix_settings' ) : get_option( 'woocommerce_paghiper_billet_settings' );
+			$due_date_mode = isset($settings['due_date_mode']) ? $settings['due_date_mode'] : 'days';
 
-			$formatted_date = ($new_due_date) ? $new_due_date->format('d/m/Y') : NULL ;
+			$paghiper_data = $order->get_meta( 'wc_paghiper_data' );
+			$today_date = new \DateTime('now', $this->timezone);
+
+			if ($gateway_name === 'paghiper_pix' && $due_date_mode === 'minutes') {
+				$new_due_date = DateTime::createFromFormat('d/m/Y H:i', $input_date, $this->timezone);
+				$formatted_date = ($new_due_date) ? $new_due_date->format('d/m/Y H:i') : null;
+				$error_message = __( '<strong>PIX PagHiper</strong>: Formato de data e hora inválido! Use dd/mm/aaaa HH:mm.', 'woo_paghiper' );
+			} else {
+				$new_due_date = DateTime::createFromFormat('d/m/Y', $input_date, $this->timezone);
+				$formatted_date = ($new_due_date) ? $new_due_date->format('d/m/Y') : null;
+				$error_message = __( '<strong>Boleto PagHiper</strong>: Data de vencimento inválida!', 'woo_paghiper' );
+			}
 
 			if(!$new_due_date || $formatted_date !== $input_date) {
-
-				$error = __( '<strong>Boleto PagHiper</strong>: Data de vencimento inválida!', 'woo_paghiper' );
-				set_transient("woo_paghiper_save_order_errors_{$post_id}", $error, 45);
-
+				set_transient("woo_paghiper_save_order_errors_{$post_id}", $error_message, 45);
 				return $post_id;
-
-			} elseif($new_due_date && $today_date->diff($new_due_date)->format("%r%a") < 0) {
-
-				$error = __( '<strong>Boleto PagHiper</strong>: A data de vencimento não pode ser anterior a data de hoje!', 'woo_paghiper' );
+			} elseif($new_due_date && $today_date->getTimestamp() > $new_due_date->getTimestamp()) {
+				$error = __( '<strong>PagHiper</strong>: A data de vencimento não pode ser anterior a data e hora de hoje!', 'woo_paghiper' );
 				set_transient("woo_paghiper_save_order_errors_{$post_id}", $error, 45);
-
 				return $post_id;
-
 			}
 
 			// Update ticket data.
+			if ($gateway_name === 'paghiper_pix' && $due_date_mode === 'minutes') {
+				$paghiper_data['order_transaction_due_datetime'] = $new_due_date->format('Y-m-d H:i:s');
+			}
 			$paghiper_data['order_transaction_due_date'] = $new_due_date->format('Y-m-d');
 			$order->update_meta_data( 'wc_paghiper_data', $paghiper_data );
 			$order->save();
@@ -233,17 +251,13 @@ class WC_Paghiper_Backend {
 			if(function_exists('update_meta_cache'))
 				update_meta_cache( 'shop_order', $post_id );
 				
-			// Delete notification if order due date has been modified
 			delete_transient("woo_paghiper_due_date_order_errors_{$post_id}");
 
-			// Add order note.
 			$order->add_order_note( sprintf( __( 'Data de vencimento alterada para %s', 'woo_paghiper' ), $formatted_date ) );
 
-			// Send email notification.
-			$this->email_notification( $order, $new_due_date->format('d/m/Y') );
+			$this->email_notification( $order, $formatted_date );
 
 			return $post_id;
-
 		}
 	}
 
