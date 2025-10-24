@@ -5,17 +5,15 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 // Configurações
 $frame_rate = 1; // FPS (frames por segundo)
 $tolerance = 10; // Tolerância de 10 segundos para cache
+$max_time_in_seconds = 1200; // 20 minutos
 
 // Obtém o timestamp da URL
-if (!isset($_GET['ts']) || !is_numeric($_GET['ts'])) {
+if (!isset($_GET['order_due_time']) || !is_numeric($_GET['order_due_time'])) {
     die('Invalid timestamp');
 }
-$timestamp = (int) $_GET['ts'];
+$timestamp = (int) $_GET['order_due_time'];
 $current_time = time();
 $remaining_time = $timestamp - $current_time;
-
-
-$remaining_time = 10;
 
 // Se já expirou, ou se está nos últimos segundos, ativa o loop de "Expirado"
 $expired = ($remaining_time <= 0);
@@ -24,9 +22,19 @@ $remaining_time = max($remaining_time, 0);
 // --- Verificação de Ferramentas ---
 $use_gifsicle = function_exists('shell_exec') && !empty(shell_exec('which gifsicle'));
 
+// --- Lógica de Tempo & Loop ---
+$is_expired = ($seconds_to_generate <= 0);
+$is_longer_than_max = ($remaining_time > $max_time_in_seconds);
+
 // Ajusta para o múltiplo mais próximo da tolerância
 $remaining_time = floor($remaining_time / $tolerance) * $tolerance;
-$cache_file = "cache/countdown_{$remaining_time}.gif";
+$suffix = '';
+if ($is_longer_than_max) {
+    $suffix = '_plus';
+} elseif ($expired) {
+    $suffix = '_expired';
+}
+$cache_file = "cache/countdown_{$remaining_time}{$suffix}.gif";
 
 // Serve o GIF do cache se existir
 if (file_exists($cache_file)) {
