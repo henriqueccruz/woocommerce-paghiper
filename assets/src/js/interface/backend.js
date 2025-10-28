@@ -168,14 +168,18 @@ jQuery(document).ready( function($){
              * Hides the odometer display and shows a number input for direct editing.
              */
             showInput() {
+
+                let wrapperWidth = this.wrapper.outerWidth(),
+                    wrapperHeight = this.wrapper.outerHeight();
+
                 this.isEditing = true;
                 this.wrapper.hide();
                 const input = $('<input type="number" class="odometer-input" />');
                 
                 // Apply some basic styling to make the input fit in.
                 input.css({
-                    'width': this.wrapper.outerWidth() + 'px',
-                    'height': this.wrapper.outerHeight() + 'px',
+                    'width': wrapperWidth + 'px',
+                    'height': wrapperHeight + 'px',
                     'font-size': '1.8em',
                     'text-align': 'center',
                     'border': '1px solid #999',
@@ -188,6 +192,18 @@ jQuery(document).ready( function($){
                 input.val(this.value);
                 this.container.append(input);
                 input.focus().select();
+
+                const ghost = $('<span style="display:none"></span>');
+                ghost.css({
+                    'font-size': input.css('font-size'),
+                    'font-family': input.css('font-family'),
+                });
+                $('body').append(ghost);
+
+                input.on('input', function() {
+                    ghost.text($(this).val());
+                    $(this).css('width', ghost.width() + 10 + 'px');
+                }).trigger('input');
 
                 // Creates a handler function to process the user's input.
                 const handleInput = () => {
@@ -393,6 +409,10 @@ jQuery(document).ready( function($){
 
             // Attach click handlers to the increment/decrement chevron controls.
             $('#paghiper-due-date-container .chevron-control').on('click', function() {
+                if ($('.odometer-input').length) {
+                    $('.odometer-input').trigger('blur');
+                    return;
+                }
                 const $this = $(this);
                 const unit = $this.data('unit');
                 const action = $this.data('action');

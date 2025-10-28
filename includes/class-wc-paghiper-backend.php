@@ -406,6 +406,7 @@ class WC_Paghiper_Backend {
 				
 				wp_enqueue_script(  'jquery-mask' );
 				wp_enqueue_script( 'paghiper-backend-js' );
+				wp_enqueue_style( 'paghiper-backend-css' );
 
 				// Localize settings for backend.js
 				$order_id = absint( $_GET['id'] );
@@ -447,7 +448,6 @@ class WC_Paghiper_Backend {
 		
 			}
 			
-			wp_enqueue_style( 'paghiper-backend-css' );
 			
 		}
 	}

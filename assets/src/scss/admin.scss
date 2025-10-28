@@ -150,12 +150,36 @@ $accent-color: #7e8993;
         height: 40px;
     }
 
+    .odometer-input[type='number'] {
+        -moz-appearance: textfield;
+    }
+
+    .odometer-input::-webkit-outer-spin-button,
+    .odometer-input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+
     // Wrapper específico para o modo "Dias"
     .days-input-wrapper .days-display {
         background: $secondary-color;
         border: 1px solid $border-color;
         border-radius: 4px;
         padding: 5px 0;
+    }
+
+    #minutes-mode-section .days-display {
+        .odometer-display {
+            display: inline-flex;
+            transition: width 0.4s ease-in-out;
+            overflow: hidden;
+            justify-content: flex-end;
+            width: 2.65rem;
+
+            &.has-three-digits {
+                width: 3.9rem;
+            }
+        }
     }
 
     // Estilos para as unidades de tempo/dias (layout vertical)

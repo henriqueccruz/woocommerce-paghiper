@@ -837,8 +837,6 @@ class WC_Paghiper {
 			wp_localize_script( 'paghiper-backend-js', 'notice_params', array(
 				'ajaxurl' => get_admin_url() . 'admin-ajax.php', 
 			));
-			
-			wp_enqueue_script(  'paghiper-backend-js' );
 		}
 	}
 

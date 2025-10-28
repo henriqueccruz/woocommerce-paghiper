@@ -336,6 +336,7 @@ class WC_Paghiper_Base_Gateway {
 			<td class="forminp">
 				<div id="paghiper-due-date-container">
 
+					<?php if ( $this->isPIX ) : ?>
 					<div class="mode-switcher">
 						<label>Dias</label>
 						<label class="switch">
@@ -344,6 +345,7 @@ class WC_Paghiper_Base_Gateway {
 						</label>
 						<label>Cronômetro (Dias/Horas/Minutos)</label>
 					</div>
+					<?php endif; ?>
 
 					<div id="days-mode-section" class="<?php echo $mode === 'days' ? 'active' : ''; ?>">
 						<div class="days-input-wrapper">
@@ -351,7 +353,7 @@ class WC_Paghiper_Base_Gateway {
 								<span class="chevron-control" data-action="increment">
 									<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><path d="m12 6.586-8.707 8.707 1.414 1.414L12 9.414l7.293 7.293 1.414-1.414L12 6.586z"/></svg>
 								</span>
-								<div class="days-display" data-value="<?php echo esc_attr($value); ?>">
+								<div class="days-display" id="cron-days-boleto" data-value="<?php echo esc_attr($value); ?>">
 									<?php // Odometer will be rendered here by JS ?>
 								</div>
 								<label>Dias</label>
@@ -362,48 +364,44 @@ class WC_Paghiper_Base_Gateway {
 						</div>
 					</div>
 
+					<?php if ( $this->isPIX ) : ?>
 					<div id="minutes-mode-section" class="<?php echo $mode === 'minutes' ? 'active' : ''; ?>">
 						<div class="cronometro-wrapper">
 							<div class="time-unit">
-								<span class="chevron-control" data-action="increment">
+								<span class="chevron-control" data-action="increment" data-unit="days">
 									<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><path d="m12 6.586-8.707 8.707 1.414 1.414L12 9.414l7.293 7.293 1.414-1.414L12 6.586z"/></svg>
 								</span>
-								<div class="days-display">
-									<span class="time-display" id="cron-days">0</span>
-								</div>
+								<div class="days-display" id="cron-days-pix"></div>
 								<label>Dias</label>
-								<span class="chevron-control" data-action="decrement">
+								<span class="chevron-control" data-action="decrement" data-unit="days">
 									<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><path d="M12 17.414 3.293 8.707l1.414-1.414L12 14.586l7.293-7.293 1.414 1.414L12 17.414z"/></svg>
 								</span>
 							</div>
 							<span class="time-separator">:</span>
 							<div class="time-unit">
-								<span class="chevron-control" data-action="increment">
+								<span class="chevron-control" data-action="increment" data-unit="hours">
 									<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><path d="m12 6.586-8.707 8.707 1.414 1.414L12 9.414l7.293 7.293 1.414-1.414L12 6.586z"/></svg>
 								</span>
-								<div class="hours-display">
-									<span class="time-display" id="cron-hours">0</span>
-								</div>
+								<div class="hours-display" id="cron-hours-pix"></div>
 								<label>Horas</label>
-								<span class="chevron-control" data-action="decrement">
+								<span class="chevron-control" data-action="decrement" data-unit="hours">
 									<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><path d="M12 17.414 3.293 8.707l1.414-1.414L12 14.586l7.293-7.293 1.414 1.414L12 17.414z"/></svg>
 								</span>
 							</div>
 							<span class="time-separator">:</span>
 							<div class="time-unit">
-								<span class="chevron-control" data-action="increment">
+								<span class="chevron-control" data-action="increment" data-unit="minutes">
 									<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><path d="m12 6.586-8.707 8.707 1.414 1.414L12 9.414l7.293 7.293 1.414-1.414L12 6.586z"/></svg>
 								</span>
-								<div class="minutes-display">
-									<span class="time-display" id="cron-minutes">0</span>
-								</div>
+								<div class="minutes-display" id="cron-minutes-pix"></div>
 								<label>Minutos</label>
-								<span class="chevron-control" data-action="decrement">
+								<span class="chevron-control" data-action="decrement" data-unit="minutes">
 									<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><path d="M12 17.414 3.293 8.707l1.414-1.414L12 14.586l7.293-7.293 1.414 1.414L12 17.414z"/></svg>
 								</span>
 							</div>
 						</div>
 					</div>
+					<?php endif; ?>
 
 				</div>
 				<p class="description">Escolha entre um vencimento fixo em dias ou um cronômetro regressivo.</p>

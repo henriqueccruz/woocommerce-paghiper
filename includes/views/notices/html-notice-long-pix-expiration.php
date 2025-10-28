@@ -16,14 +16,14 @@ $nonce = wp_create_nonce( 'paghiper_long_expiration_notice' );
 <div class="notice notice-warning is-dismissible paghiper-notice" id="paghiper-long-expiration-notice">
     <p>
         <strong><?php _e('Aviso do PagHiper PIX', 'woo-boleto-paghiper'); ?></strong><br>
-        <?php _e('O tempo de vencimento do seu PIX está configurado para mais de 24 horas no modo "cronômetro". Isso pode causar problemas com o cronômetro animado (GIF) enviado nos e-mails. O que você gostaria de fazer?', 'woo-boleto-paghiper'); ?>
+        <?php _e('O tempo de vencimento do seu PIX está configurado para mais de 24 horas no modo "cronômetro". Isso desativa o cronômetro animado (GIF) enviado nos e-mails. O que você gostaria de fazer?', 'woo-boleto-paghiper'); ?>
     </p>
     <p>
         <button class="button button-secondary" data-action="disable_gif">
             <?php _e('Manter configuração e desativar GIF no e-mail', 'woo-boleto-paghiper'); ?>
         </button>
         <button class="button button-primary" data-action="change_to_days">
-            <?php _e('Mudar vencimento para "dias" (Recomendado)', 'woo-boleto-paghiper'); ?>
+            <?php _e('Diminuir o tempo de vencimento (Recomendado)', 'woo-boleto-paghiper'); ?>
         </button>
     </p>
 </div>

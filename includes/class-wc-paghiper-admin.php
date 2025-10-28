@@ -69,6 +69,7 @@ class WC_Paghiper_Admin {
 	                    $settings_to_pass = array(
 	                        'due_date_mode'  => $due_date_mode,
 	                        'due_date_value' => $due_date_value,
+	                        'is_pix'         => $is_pix,
 	                    );
 	
 	                    wp_localize_script('wc-paghiper-admin', 'paghiper_settings', $settings_to_pass);
@@ -90,13 +91,13 @@ class WC_Paghiper_Admin {
 		        return;
 		    }
 	
-		    $settings = get_option('woocommerce_paghiper_pix_settings');
-		    $due_date_mode = isset($settings['due_date_mode']) ? $settings['due_date_mode'] : 'minutes';
-		    $due_date_value = isset($settings['due_date_value']) ? intval($settings['due_date_value']) : 0;
-	
-		    // 23h 59m 50s em minutos é ~1439.8. Checamos por valores maiores que 1439.
-		    if ($due_date_mode === 'minutes' && $due_date_value > 1439) {
-		        include_once 'views/notices/html-notice-long-pix-expiration.php';
+		                $settings = get_option('woocommerce_paghiper_pix_settings');
+		    		    $due_date_mode = isset($settings['due_date_mode']) ? $settings['due_date_mode'] : 'minutes';
+		    		    $due_date_value = isset($settings['due_date_value']) ? intval($settings['due_date_value']) : 0;
+		                $disable_email_gif = isset($settings['disable_email_gif']) ? $settings['disable_email_gif'] : 'no';
+		    
+		    		    // 23h 59m 50s em minutos é ~1439.8. Checamos por valores maiores que 1439.
+		    		    if ($due_date_mode === 'minutes' && $due_date_value > 1439 && $disable_email_gif !== 'yes') {		        include_once 'views/notices/html-notice-long-pix-expiration.php';
 		    }
 		}
 	

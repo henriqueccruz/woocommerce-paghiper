@@ -86,6 +86,12 @@ class WC_Paghiper_Billet_Gateway extends WC_Payment_Gateway {
 		return $this->paghiper_gateway->process_payment( $order_id, $is_frontend = true );
 	}
 	
+	public function process_admin_options() {
+		parent::process_admin_options();
+		$this->settings['due_date_mode'] = 'days';
+		update_option( $this->get_option_key(), apply_filters( 'woocommerce_settings_api_sanitized_fields_' . $this->id, $this->settings ), 'yes' );
+	}
+
 	public function generate_due_date_selector_html( $key, $data ) {
 		return $this->paghiper_gateway->generate_due_date_selector_html( $key, $data );
 	}
