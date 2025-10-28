@@ -53,7 +53,7 @@ class WC_Paghiper_Admin {
 	        if(is_admin()) {
 	            if(is_array($_GET) && array_key_exists('page', $_GET) && array_key_exists('section', $_GET)) {
 	
-	                if($_GET['page'] === 'wc-settings' && in_array($_GET['section'], ['paghiper_boleto', 'paghiper_pix'])) {
+	                if($_GET['page'] === 'wc-settings' && in_array($_GET['section'], ['paghiper_billet', 'paghiper_pix'])) {
 	                    
 	                    $gateway_id = sanitize_text_field($_GET['section']);
 	                    $settings_key = "woocommerce_{$gateway_id}_settings";
