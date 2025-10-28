@@ -90,7 +90,7 @@ class WC_Paghiper_Frontend {
             return;
         }
 
-        $order = wc_get_order($order_id);
+        $order = new WC_Order($order_id);
         if (!$order) {
             wp_send_json_error(['message' => 'Order not found.']);
             return;
@@ -114,7 +114,7 @@ class WC_Paghiper_Frontend {
         // Allow developers to filter the paid statuses
         $paid_statuses = apply_filters('woo_paghiper_paid_statuses', array_unique($paid_statuses), $order);
 
-        if (in_array($paghiper_status, $paid_statuses)) {
+        if (in_array($order->get_status(), $paid_statuses)) {
             wp_send_json_success(['status' => 'paid']);
         } else {
             wp_send_json_success(['status' => $paghiper_status]);

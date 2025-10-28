@@ -134,13 +134,22 @@ if ($gateway_id === 'paghiper_pix' && $due_date_mode_pix === 'minutes') {
                                                 enableUtc: false,
                                                 sectionClass: 'paghiper-chrono-section',
                                                 amountClass: 'paghiper-chrono-amount',
-                                                wordClass: 'paghiper-chrono-label',
-                                                onEnd: function() {
-                                                    if (typeof refreshCheckoutContent === 'function') {
-                                                        refreshCheckoutContent();
-                                                    }
-                                                }
-                                            });                    });
+                                                                    wordClass: 'paghiper-chrono-label',
+                                                                    onEnd: function() {
+                                                                        // Aguarda 10 segundos após o término do cronômetro
+                                                                        setTimeout(function() {
+                                                                            // Para o loop de verificação de pagamento
+                                                                            if (typeof paymentCheckIntervalId !== 'undefined' && paymentCheckIntervalId) {
+                                                                                clearInterval(paymentCheckIntervalId);
+                                                                            }
+                                                
+                                                                            // Aciona a atualização do conteúdo da div
+                                                                            if (typeof refreshCheckoutContent === 'function') {
+                                                                                refreshCheckoutContent();
+                                                                            }
+                                                                        }, 10000); // 10 segundos de espera
+                                                                    }
+                                                                });                    });
                 </script>
         <?php
             }

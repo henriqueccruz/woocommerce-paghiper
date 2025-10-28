@@ -822,13 +822,8 @@ class WC_Paghiper_Base_Gateway {
 			return;
 		}
 
-		// Fallback for old billet transactions
-		if($order->get_payment_method() !== $this->gateway->id && $order->get_payment_method() !== 'paghiper') {
-			return;
-		}
-
-		// Breaks execution if order is not in the right state
-		if(apply_filters('woo_paghiper_pending_status', $this->set_status_when_waiting, $order) !== $order_status) {
+		// Bail out if not our gateway
+		if($order->get_payment_method() !== $this->gateway->id) {
 			return;
 		}
 
@@ -857,19 +852,32 @@ class WC_Paghiper_Base_Gateway {
 
 			if ( file_exists( $template_path ) ) {
 				include $template_path;
+				return true;
 			} else {
 				echo '<p>' . __( 'Erro ao carregar as instruções de pagamento. Arquivo de template não encontrado.', 'woo-boleto-paghiper' ) . '</p>';
 			}
 
 		} else {
 
+			// Define all possible "paid" statuses
+			$paid_statuses = ['paid', 'completed', 'processing', 'available', 'received'];
+
+			// Add the custom "paid" status from plugin settings
+			if (!empty($gateway_settings['set_status_when_paid'])) {
+				$paid_statuses[] = $gateway_settings['set_status_when_paid'];
+			}
+			
+			// Allow developers to filter the paid statuses
+			$paid_statuses = apply_filters('woo_paghiper_paid_statuses', array_unique($paid_statuses), $order);
+
 			// Checamos se o pagamento já foi concluído
-			if ($paghiperTransaction->is_payment_completed()) {
+			if ($paghiperTransaction->is_payment_completed() || in_array($order->get_status(), $paid_statuses)) {
 
 				$template_path = WC_Paghiper::get_plugin_path() . 'includes/views/checkout/html-payment-completed.php';
 
 				if ( file_exists( $template_path ) ) {
 					include $template_path;
+					return true;
 				} else {
 					echo '<p>' . __( 'Erro ao carregar as instruções de pagamento. Por favor, entre em contato com o suporte.', 'woo-boleto-paghiper' ) . '</p>';
 				}
@@ -882,6 +890,7 @@ class WC_Paghiper_Base_Gateway {
 					$template_path = WC_Paghiper::get_plugin_path() . 'includes/views/checkout/html-payment-expired.php';
 					if ( file_exists( $template_path ) ) {
 						include $template_path;
+						return true;
 					} else {
 						echo '<p>' . __( 'Erro ao carregar as instruções de pagamento. Por favor, entre em contato com o suporte.', 'woo-boleto-paghiper' ) . '</p>';
 					}
@@ -904,6 +913,7 @@ class WC_Paghiper_Base_Gateway {
 					echo '<p>' . __( 'Erro ao recuperar as instruções de pagamento. Por favor, entre em contato com o suporte.', 'woo-boleto-paghiper' ) . '</p>';
 				}
 			}
+
 		}
 	}
 
