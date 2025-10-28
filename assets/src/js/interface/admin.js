@@ -126,7 +126,7 @@ jQuery(function ($) {
         // Centraliza a configuração de todos os tipos de odômetros
         static LIMITS = {
             'boleto-days': { min: 1, max: 31, wrap: true },
-            'pix-days':    { min: 0, max: 3,  wrap: true },
+            'pix-days':    { min: 0, max: 400,  wrap: true },
             'hours':       { min: 0, max: 23, wrap: true },
             'minutes':     { min: 0, max: 59, wrap: true }
         };

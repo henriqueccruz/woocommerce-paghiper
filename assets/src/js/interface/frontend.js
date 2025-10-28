@@ -170,7 +170,7 @@ function showPhNotification(options) {
 async function refreshCheckoutContent() {
     const loadingSpinner = '<span class="ph-notification-spinner"></span>';
     showPhNotification({
-        message: `${loadingSpinner} O tempo para pagamento pode ter expirado. Atualizando informações...`,
+        message: `${loadingSpinner} Por favor aguarde...`,
         type: 'warning',
         duration: 5000 // Mostra por 5s enquanto carrega
     });
