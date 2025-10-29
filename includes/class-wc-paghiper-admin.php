@@ -153,7 +153,7 @@ class WC_Paghiper_Admin {
 				$to_settings['api_key'] = $from_settings['api_key'];
 				$to_settings['token']   = $from_settings['token'];
 
-				update_option( 'woocommerce_' . $to_gateway . '_settings', $from_settings );
+				update_option( 'woocommerce_' . $to_gateway . '_settings', $to_settings );
 
 				wp_send_json_success();
 			} else {
