@@ -321,3 +321,19 @@ $accent-color: #7e8993;
         transform: translateY(20px);
     }
 }
+
+// Copy and test credentials
+.credential-actions-row {
+    th, td {
+        margin: 0;
+        padding: 0;
+    }
+}
+
+#copy-credentials,
+#test-credentials {
+    margin-left: 20px;
+    color: white;
+    background: $label-color;
+    border-color: $text-color;
+}

@@ -10,6 +10,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+use PagHiper\PagHiper;
+
 /**
  * Admin Class
  */
@@ -34,6 +36,12 @@ class WC_Paghiper_Admin {
 
 		// Hook for the AJAX handler
 		add_action( 'wp_ajax_paghiper_handle_long_expiration_notice', array( $this, 'ajax_handle_long_expiration_notice' ) );
+
+		// AJAX handler for copying credentials
+		add_action( 'wp_ajax_paghiper_copy_credentials', array( $this, 'ajax_copy_credentials' ) );
+
+		// AJAX handler for testing credentials
+		add_action( 'wp_ajax_paghiper_test_credentials', array( $this, 'ajax_test_credentials' ) );
 	}
 
 	/**
@@ -70,6 +78,8 @@ class WC_Paghiper_Admin {
 	                        'due_date_mode'  => $due_date_mode,
 	                        'due_date_value' => $due_date_value,
 	                        'is_pix'         => $is_pix,
+	                        'nonce'          => wp_create_nonce('paghiper-admin-ajax-nonce'),
+                            'gateway_id'     => $gateway_id,
 	                    );
 	
 	                    wp_localize_script('wc-paghiper-admin', 'paghiper_settings', $settings_to_pass);
@@ -120,6 +130,74 @@ class WC_Paghiper_Admin {
 	
 		    set_transient('paghiper_long_expiration_notice_dismissed', true, YEAR_IN_SECONDS);
 		    wp_send_json_success();
+		}
+
+		public function ajax_copy_credentials() {
+			check_ajax_referer( 'paghiper-admin-ajax-nonce', 'nonce' );
+
+			$to_gateway = isset( $_POST['to'] ) ? sanitize_text_field( $_POST['to'] ) : '';
+			$from_gateway = ( $to_gateway === 'paghiper_pix' ) ? 'paghiper_billet' : 'paghiper_pix';
+
+			$from_settings = get_option( 'woocommerce_' . $from_gateway . '_settings' );
+			$to_settings   = get_option( 'woocommerce_' . $to_gateway . '_settings' );
+
+			if(!is_array($from_settings)) {
+				wp_send_json_error( array( 'message' => 'Configurações do gateway de origem inválidas.' ) );
+			}
+
+			if(!is_array($to_settings)) {
+				$to_settings = [];
+			}
+
+			if ( ! empty( $from_settings['api_key'] ) && ! empty( $from_settings['token'] ) ) {
+				$to_settings['api_key'] = $from_settings['api_key'];
+				$to_settings['token']   = $from_settings['token'];
+
+				update_option( 'woocommerce_' . $to_gateway . '_settings', $from_settings );
+
+				wp_send_json_success();
+			} else {
+				wp_send_json_error( array( 'message' => 'O gateway de origem não possui credenciais para copiar.' ) );
+			}
+		}
+
+		public function ajax_test_credentials() {
+			check_ajax_referer( 'paghiper-admin-ajax-nonce', 'nonce' );
+
+			$api_key = isset( $_POST['apiKey'] ) ? sanitize_text_field( $_POST['apiKey'] ) : '';
+			$token   = isset( $_POST['token'] ) ? sanitize_text_field( $_POST['token'] ) : '';
+
+			if ( empty( $api_key ) || empty( $token ) ) {
+				wp_send_json_error( array( 'message' => 'API Key e Token são obrigatórios.' ) );
+			}
+
+			wc_paghiper_initialize_sdk();
+
+			try {
+				$PagHiperAPI = new PagHiper($api_key.'a', $token);
+				$response = $PagHiperAPI->transaction()->status('0000000000000000');
+
+			} catch(Exception $e) {
+
+				$errors = [];
+
+				if (str_contains($e->getMessage(), 'token')) {
+					$errors[] = 'Token';
+				}
+				if (str_contains($e->getMessage(), 'apiKey')) {
+					$errors[] = 'API Key';
+				}
+
+				if (!empty($errors)) {
+					$error_message = 'Credenciais inválidas: ' . implode(' e ', $errors) . ' incorreto(s).';
+					wp_send_json_error( array( 'message' => $error_message ) );
+				} else {
+					wp_send_json_success( array( 'message' => 'Credenciais válidas!' ) );
+				}
+			}
+			
+			wp_send_json_success( array( 'message' => 'Credenciais válidas!' ) );
+
 		}
 }
 

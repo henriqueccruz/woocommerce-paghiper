@@ -37,6 +37,13 @@ jQuery(function ($) {
     const modeInput = $('#woocommerce_paghiper_pix_due_date_mode, #woocommerce_paghiper_billet_due_date_mode');
     const valueInput = $('#woocommerce_paghiper_pix_due_date_value, #woocommerce_paghiper_billet_due_date_value');
 
+    // Move credential actions button
+    const apiKeyRow = $('#woocommerce_paghiper_pix_api_key, #woocommerce_paghiper_billet_api_key');
+    const credentialActionsRow = $('#copy-credentials, #test-credentials');
+    if (apiKeyRow.length && credentialActionsRow.length) {
+        credentialActionsRow.insertAfter(apiKeyRow);
+    }
+
     // Odometer logic for both PIX and Boleto
     const modeToggle = $('#due-date-mode-toggle');
     const daysSection = $('#days-mode-section');
@@ -387,4 +394,78 @@ jQuery(function ($) {
 
         modeToggle.trigger('change');
     }
+
+    $('#copy-credentials').on('click', function() {
+
+        let notificationElement = null;
+
+        const loadingSpinner = '<span class="ph-notification-spinner"></span>';
+        notificationElement = showPhNotification({
+            message: `${loadingSpinner} Copiando credenciais...`,
+            type: 'info',
+            duration: 0 // Notificação Fixa
+        });
+
+        $.post(ajaxurl, { action: 'paghiper_copy_credentials', nonce: paghiper_settings.nonce, to: paghiper_settings.gateway_id }, function(response) {
+            if (response.success) {
+
+
+                showPhNotification({ 
+                    message: 'Credenciais configuradas com sucesso!', 
+                    type: 'success', 
+                    duration: 5000 
+                });
+                
+                setTimeout(() => {
+                    location.reload();
+                }, 1000);
+
+            } else {
+                showPhNotification({ message: response.data.message, type: 'error' });
+            }
+
+            if (notificationElement) {
+                notificationElement.remove();
+            }
+
+        });
+    });
+
+    $('#test-credentials').on('click', function() {
+        const apiKey = $('#woocommerce_paghiper_pix_api_key, #woocommerce_paghiper_billet_api_key').val();
+        const token = $('#woocommerce_paghiper_pix_token, #woocommerce_paghiper_billet_token').val();
+
+        let notificationElement = null;
+
+        const loadingSpinner = '<span class="ph-notification-spinner"></span>';
+        notificationElement = showPhNotification({
+            message: `${loadingSpinner} Testando credenciais...`,
+            type: 'info',
+            duration: 0 // Notificação Fixa
+        });
+
+        $.post(ajaxurl, { action: 'paghiper_test_credentials', nonce: paghiper_settings.nonce, apiKey: apiKey, token: token }, function(response) {
+            if (response.success) {
+                showPhNotification({ message: response.data.message, type: 'success' });
+            } else {
+                showPhNotification({ message: response.data.message, type: 'error' });
+            }
+
+            if (notificationElement) {
+                notificationElement.remove();
+            }
+        }).fail(function(jqXHR, textStatus, errorThrown) {
+            // Handle errors, including 500 Internal Server Error
+            if (jqXHR.status === 500) {
+                showPhNotification({ message: 'Servidor indisponível (erro 500)', type: 'error' });
+                // You can display an error message to the user or log details
+            } else {
+                showPhNotification({ message: 'Não foi possível checar suas credenciais agora.', type: 'error' });
+            }
+
+            if (notificationElement) {
+                notificationElement.remove();
+            }
+        });
+    });
 });

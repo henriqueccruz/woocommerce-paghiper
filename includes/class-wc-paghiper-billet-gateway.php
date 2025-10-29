@@ -92,6 +92,10 @@ class WC_Paghiper_Billet_Gateway extends WC_Payment_Gateway {
 		update_option( $this->get_option_key(), apply_filters( 'woocommerce_settings_api_sanitized_fields_' . $this->id, $this->settings ), 'yes' );
 	}
 
+	public function generate_credentials_button_html( $key, $data ) {
+		return $this->paghiper_gateway->generate_credentials_button_html( $key, $data );
+	}
+
 	public function generate_due_date_selector_html( $key, $data ) {
 		return $this->paghiper_gateway->generate_due_date_selector_html( $key, $data );
 	}

@@ -213,13 +213,16 @@ class WC_Paghiper_Base_Gateway {
 			),
 			'api_key' => array(
 				'title'       => __( 'API Key', 'woo-boleto-paghiper' ),
-				'type'        => 'password',
+				'type'        => 'text',
 				'placeholder' => 'apk_',
 				'description' => __( 'Chave de API para integração com a PagHiper', 'woo-boleto-paghiper' ),
 			),
+			'credential_actions' => array(
+				'type' => 'credentials_button',
+			),
 			'token' => array(
 				'title'       => __( 'Token PagHiper', 'woo-boleto-paghiper' ),
-				'type'        => 'password',
+				'type'        => 'text',
 				'description' => __( 'Extremamente importante, você pode gerar seu token em nossa pagina: Painel > Ferramentas > Token.', 'woo-boleto-paghiper' ),
 			),
 			'due_date_options' => array(
@@ -313,10 +316,34 @@ class WC_Paghiper_Base_Gateway {
 		);
 
 		if($this->isPIX) {
-			unset($first['skip_non_workdays'], $first['open_after_day_due'], $last['disable_email_gif']);
+			unset($first['skip_non_workdays'], $first['open_after_day_due']);
+		}
+
+		if($this->gateway->id !== 'paghiper_pix') {
+			unset($last['disable_email_gif']);
 		}
 
 		return array_merge( $first, $last );
+	}
+
+	public function generate_credentials_button_html( $key, $data ) {
+		$api_key = $this->gateway->get_option( 'api_key' );
+		$token   = $this->gateway->get_option( 'token' );
+
+		ob_start();
+		?>
+		<tr valign="top" class="credential-actions-row">
+			<th scope="row" class="titledesc"></th>
+			<td class="forminp">
+				<?php if ( empty( $api_key ) || empty( $token ) ) : ?>
+					<button id="copy-credentials" type="button" class="button"><?php echo sprintf( __( 'Copiar credenciais do %s', 'woo-boleto-paghiper' ), ( $this->isPIX ? 'Boleto PagHiper' : 'PIX PagHiper' ) ); ?></button>
+				<?php else : ?>
+					<button id="test-credentials" type="button" class="button"><?php _e( 'Testar credenciais', 'woo-boleto-paghiper' ); ?></button>
+				<?php endif; ?>
+			</td>
+		</tr>
+		<?php
+		return ob_get_clean();
 	}
 
 	/**
