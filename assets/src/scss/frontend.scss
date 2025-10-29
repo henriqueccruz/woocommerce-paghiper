@@ -230,7 +230,7 @@
                 img {
                     max-height: 4rem;
                     width: 100%;
-                    image-rendering: -webkit-optimize-contrast;
+                    image-rendering: pixelated;
                 }
             }
         }
