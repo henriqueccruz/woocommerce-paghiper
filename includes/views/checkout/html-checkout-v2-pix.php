@@ -23,21 +23,12 @@ $order_id = isset($wp->query_vars['order-received']) ? $wp->query_vars['order-re
     var ph_checkout_params = {
         'ajax_url': '<?php echo admin_url('admin-ajax.php'); ?>',
         'order_id': '<?php echo $order_id; ?>',
-        'nonce': '<?php echo wp_create_nonce('paghiper_payment_status_nonce'); ?>'
+        'nonce': '<?php echo wp_create_nonce('paghiper_payment_status_nonce'); ?>',
+        'is_pix': true
     };
 </script>
 <?php
 $gateway_id = $order->get_payment_method();
-
-// This template is designed for PIX. You can expand it to handle billets as well.
-if ($gateway_id !== 'paghiper_pix') {
-    // For non-PIX payments, you can include the v1 template or show a message.
-    $template_v1_path = WC_Paghiper::get_plugin_path() . 'includes/views/checkout/html-checkout-v1.php';
-    if ( file_exists( $template_v1_path ) ) {
-        include $template_v1_path;
-    }
-    return;
-}
 
 $order_data = $paghiperTransaction->_get_order_data();
 $digitable_line = $paghiperTransaction->_get_digitable_line();
@@ -168,7 +159,7 @@ if ($gateway_id === 'paghiper_pix' && $due_date_mode_pix === 'minutes') {
 
             <div class="ph-checkout-v2__details">
                 <p class="ph-checkout-v2__amount"><?php echo $total; ?></p>
-                <p class="ph-checkout-v2__description">
+                <p class="ph-checkout-v2__due-date">
                     <?php printf(__('Vence em %s', 'woo-boleto-paghiper'), $due_date_display_str); ?>
                     <?php if (!empty($due_date_timer_str)) : ?>
                         <span class="ph-checkout-v2__due-date-timer"><?php echo esc_html($due_date_timer_str); ?></span>

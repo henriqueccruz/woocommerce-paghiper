@@ -809,6 +809,15 @@ class WC_Paghiper_Base_Gateway {
 		$data['order_transaction_due_date'] = $transaction_due_date->format('Y-m-d');
 		$data['transaction_type'] = ($gateway_name == 'paghiper_pix') ? 'pix' : 'billet';
 
+		// Salva os dados atuais do modo e valor de vencimento
+		if($this->due_date_mode === 'minutes') {
+			$data['current_transaction_minutes_due_date'] = absint($this->due_date_value);
+			$data['current_transaction_days_due_date'] = 0;
+		} else {
+			$data['current_transaction_minutes_due_date'] = 0;
+			$data['current_transaction_days_due_date'] = absint($this->due_date_value);
+		}
+
 		if ( $this->log ) {
 			wc_paghiper_add_log( 
 				$this->log, 
@@ -871,7 +880,11 @@ class WC_Paghiper_Base_Gateway {
 			if ($use_legacy_checkout) {
 				$template_path = WC_Paghiper::get_plugin_path() . 'includes/views/checkout/html-checkout-v1.php';
 			} else {
-				$template_path = WC_Paghiper::get_plugin_path() . 'includes/views/checkout/html-checkout-v2.php';
+				if($this->isPIX) {
+					$template_path = WC_Paghiper::get_plugin_path() . 'includes/views/checkout/html-checkout-v2-pix.php';
+				} else {
+					$template_path = WC_Paghiper::get_plugin_path() . 'includes/views/checkout/html-checkout-v2-billet.php';
+				}
 			}
 
 			if ( file_exists( $template_path ) ) {

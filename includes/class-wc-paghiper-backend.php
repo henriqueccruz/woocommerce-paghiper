@@ -206,7 +206,7 @@ class WC_Paghiper_Backend {
 
 			if($gateway_name !== 'paghiper_pix') {
 				$html .= '<p><strong>' . __( 'URL:', 'woo_paghiper' ) . '</strong> <a target="_blank" href="' . esc_url( wc_paghiper_get_paghiper_url( $order->get_order_key() ) ) . '">' . __( 'Visualizar boleto', 'woo_paghiper' ) . '</a></p>';
-				$html .= '<p><strong>' . __( 'URL:', 'woo_paghiper' ) . '</strong> <a target="_blank" href="' . esc_url( $paghiperTransaction['download_url'] ) . '">' . __( 'Baixar boleto', 'woo_paghiper' ) . '</a></p>';
+				$html .= '<p><strong>' . __( 'URL:', 'woo_paghiper' ) . '</strong> <a target="_blank" href="' . esc_url( $paghiperTransaction->_get_order_data()['url_slip_pdf'] ) . '">' . __( 'Baixar boleto', 'woo_paghiper' ) . '</a></p>';
 			}
 
 			$html .= '<p style="border-top: 1px solid #ccc;"></p>';

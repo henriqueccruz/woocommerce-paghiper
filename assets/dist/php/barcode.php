@@ -37,12 +37,12 @@ function pintarbarras($mapaI25, $altura, $espmin) {
 		$altura = 5;
 	}
 
-	$largura = (int) (strlen($mapaI25)/5*((($espmin+1)*3)+(($espmin+3)*2)))+20;
+	$largura = (int) (strlen($mapaI25)/5*((($espmin+1)*3)+(($espmin+3)*2)));
 
 	$im = imagecreate($largura * 4, $altura);
 	imagecolorallocate($im, 255, 255, 255);
 
-	$spH = 10;
+	$spH = 0;
 	for($k = 0; $k < strlen($mapaI25); $k++) {
 		if (!($k&1)) {
 			$corbarra = imagecolorallocate($im,0,0,0);

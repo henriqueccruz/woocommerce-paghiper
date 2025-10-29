@@ -463,7 +463,7 @@ jQuery(document).ready( function($){
 
         const totalHours = totalMinutes / 60;
 
-        if (totalHours > 24) {
+        if (paghiper_backend_settings.due_date_mode === 'minutes' && totalHours > 24) {
             if (!confirm('A data de vencimento é maior que 24 horas a partir de agora. O cronômetro de contagem regressiva não será exibido no e-mail do cliente. Deseja continuar?')) {
                 return;
             }

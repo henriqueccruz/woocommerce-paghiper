@@ -208,7 +208,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const success = await copyTextToClipboard(textToCopy);
     if (success) {
-      showPhNotification({ message: 'Código PIX copiado com sucesso!', type: 'success' });
+        if (ph_checkout_params?.is_pix) {
+            showPhNotification({ message: 'Código PIX copiado com sucesso!', type: 'success' });
+        } else {
+            showPhNotification({ message: 'Código de barras copiado com sucesso!', type: 'success' });
+        }
       if(copyButton) {
         const originalText = copyButton.dataset.originalText || copyButton.textContent;
         if (!copyButton.dataset.originalText) {
@@ -254,12 +258,31 @@ document.addEventListener('DOMContentLoaded', () => {
     const paymentCheckInterval = setInterval(() => {
         
         if (!notificationElement || !document.body.contains(notificationElement)) {
+
             const loadingSpinner = '<span class="ph-notification-spinner"></span>';
-            notificationElement = showPhNotification({
-                message: `${loadingSpinner} Aguardando confirmação do pagamento...`,
-                type: 'info',
-                duration: 0 // Notificação Fixa
-            });
+
+            if (ph_checkout_params?.is_pix) {
+                notificationElement = showPhNotification({
+                    message: `${loadingSpinner} Aguardando confirmação do pagamento...`,
+                    type: 'info',
+                    duration: 0 // Notificação Fixa
+                });
+            } else {
+                const textMessages = [
+                    'Agora é só pagar seu boleto e aguardar a confirmação!',
+                    'Seu pagamento pode levar até 3 dias úteis para ser confirmado.',
+                    'Assim que isso ocorrer, te avisaremos por aqui.',
+                ];
+
+                notificationElement = showPhNotification({
+                    message: `${loadingSpinner} <span>${textMessages[0]}</span>`,
+                    type: 'info',
+                    duration: 0 // Fixa
+                });
+
+                const textElement = notificationElement.querySelector('span:last-child');
+                animateNotificationText(notificationElement, textElement, textMessages, 6000, 250, 1000);
+            }
         }
 
         jQuery.post(ph_checkout_params.ajax_url, {
@@ -273,8 +296,24 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (notificationElement) {
                         notificationElement.remove();
                     }
+
                     showPhNotification({ 
                         message: 'Pagamento confirmado com sucesso!', 
+                        type: 'success', 
+                        duration: 5000 
+                    });
+                    
+                    setTimeout(() => {
+                        refreshCheckoutContent();
+                    }, 1000);
+                } else if (response.data.status === 'reserved') {
+                    clearInterval(paymentCheckInterval);
+                    if (notificationElement) {
+                        notificationElement.remove();
+                    }
+
+                    showPhNotification({ 
+                        message: 'Pagamento pré-confirmado! Agora é só esperar a compensação.', 
                         type: 'success', 
                         duration: 5000 
                     });
