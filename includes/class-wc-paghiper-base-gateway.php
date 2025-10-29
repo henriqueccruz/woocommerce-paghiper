@@ -176,7 +176,7 @@ class WC_Paghiper_Base_Gateway {
 
 		$default_label 			= $this->isPIX ? 'Ativar PIX PagHiper' : 'Ativar Boleto PagHiper';
 		$default_title 			= $this->isPIX ? 'PIX' : 'Boleto Bancário';
-		$default_description	= $this->isPIX ? 'Pague de maneira rápida e segura com PIX' : 'Pagar com Boleto Bancário';
+		$default_description	= $this->isPIX ? 'Pague de maneira rápida e segura com PIX' : 'Pague com Boleto Bancário';
 
 		$default_gateway_name 	= ($this->gateway->id == 'paghiper_pix') ? __('PIX', 'woo-boleto-paghiper') : __('boleto', 'woo-boleto-paghiper');
 
@@ -239,7 +239,7 @@ class WC_Paghiper_Base_Gateway {
 
 			'due_date_value' => array(
 				'type'    	=> 'hidden',
-				'default' 	=> ($this->isPIX ? 30 : 3),
+				'default' 	=> ($this->isPIX ? 30 : 2),
 			),
 			'open_after_day_due' => array(
 				/* translators: %s: Transaction type. May be PIX or billet, for an example. */
