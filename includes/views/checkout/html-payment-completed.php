@@ -31,7 +31,7 @@ if ( ! defined( 'ABSPATH' ) ) {
             </div>
         </div>
         <div class="ph-checkout-v2__powered-by">
-            <?php _e('Pagamento processado por', 'woo-boleto-paghiper'); ?> <img src="<?php echo wc_paghiper_assets_url() . 'images/paghiper.png'; ?>">
+            <?php _e('Pagamento processado por', 'woo-boleto-paghiper'); ?> <a href="https://www.paghiper.com" target="_blank"><img src="<?php echo wc_paghiper_assets_url('images/paghiper.svg'); ?>"></a>
         </div>
     </div>
 </div>

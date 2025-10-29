@@ -170,7 +170,7 @@
 .ph-checkout-v2 {
     &__container {
         max-width: 800px;
-        margin: 80px auto;
+        margin: 140px auto;
         font-family: 'Atkinson Hyperlegible', sans-serif;
 
         .paghiper-countdown-wrapper {
@@ -314,8 +314,8 @@
             max-height: 1rem;
             vertical-align: middle;
             margin: 0 0 0 5px;
-            filter: saturate(0.0);
-            opacity: 0.5;
+            /*filter: saturate(0.0);
+            opacity: 0.5;*/
         }
     }
 

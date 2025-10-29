@@ -131,25 +131,26 @@ if ($gateway_id === 'paghiper_pix' && $due_date_mode_pix === 'minutes') {
                             },
                             plural: true,
                             zeroPad: true,
-                                                enableUtc: false,
-                                                sectionClass: 'paghiper-chrono-section',
-                                                amountClass: 'paghiper-chrono-amount',
-                                                                    wordClass: 'paghiper-chrono-label',
-                                                                    onEnd: function() {
-                                                                        // Aguarda 10 segundos após o término do cronômetro
-                                                                        setTimeout(function() {
-                                                                            // Para o loop de verificação de pagamento
-                                                                            if (typeof paymentCheckIntervalId !== 'undefined' && paymentCheckIntervalId) {
-                                                                                clearInterval(paymentCheckIntervalId);
-                                                                            }
-                                                
-                                                                            // Aciona a atualização do conteúdo da div
-                                                                            if (typeof refreshCheckoutContent === 'function') {
-                                                                                refreshCheckoutContent();
-                                                                            }
-                                                                        }, 10000); // 10 segundos de espera
-                                                                    }
-                                                                });                    });
+                            enableUtc: false,
+                            sectionClass: 'paghiper-chrono-section',
+                            amountClass: 'paghiper-chrono-amount',
+                            wordClass: 'paghiper-chrono-label',
+                            onEnd: function() {
+                                // Aguarda 10 segundos após o término do cronômetro
+                                setTimeout(function() {
+                                    // Para o loop de verificação de pagamento
+                                    if (typeof paymentCheckIntervalId !== 'undefined' && paymentCheckIntervalId) {
+                                        clearInterval(paymentCheckIntervalId);
+                                    }
+        
+                                    // Aciona a atualização do conteúdo da div
+                                    if (typeof refreshCheckoutContent === 'function') {
+                                        refreshCheckoutContent();
+                                    }
+                                }, 10000); // 10 segundos de espera
+                            }
+                        });
+                    });
                 </script>
         <?php
             }
@@ -194,7 +195,7 @@ if ($gateway_id === 'paghiper_pix' && $due_date_mode_pix === 'minutes') {
         </div>
 
         <div class="ph-checkout-v2__powered-by">
-            <?php _e('Pagamento processado por', 'woo-boleto-paghiper'); ?> <img src="<?php echo wc_paghiper_assets_url() . 'images/paghiper.png'; ?>">
+            <?php _e('Pagamento processado por', 'woo-boleto-paghiper'); ?> <a href="https://www.paghiper.com" target="_blank"><img src="<?php echo wc_paghiper_assets_url('images/paghiper.svg'); ?>"></a>
         </div>
 </div>
 
