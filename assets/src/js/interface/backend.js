@@ -331,49 +331,44 @@ jQuery(document).ready( function($){
             }
         }
 
-        // Holds the singleton instances of our OdometerDisplay classes.
         let chronoOdometers = {};
+        let daysOdometer;
 
-        /**
-         * Calculates the total minutes from all odometers and updates the hidden input field.
-         */
         function updateTotalMinutes() {
-            const days = chronoOdometers.days.value;
-            const hours = chronoOdometers.hours.value;
-            const minutes = chronoOdometers.minutes.value;
-            const totalMinutes = (days * 24 * 60) + (hours * 60) + minutes;
-            valueInput.val(totalMinutes).trigger('change');
+            if (paghiper_backend_settings.due_date_mode === 'minutes') {
+                const days = chronoOdometers.days.value;
+                const hours = chronoOdometers.hours.value;
+                const minutes = chronoOdometers.minutes.value;
+                const totalMinutes = (days * 24 * 60) + (hours * 60) + minutes;
+                valueInput.val(totalMinutes).trigger('change');
+            } else {
+                valueInput.val(daysOdometer.value * 24 * 60).trigger('change');
+            }
         }
 
-        /**
-         * Enforces the maximum expiration limit. If the days odometer is at its max value,
-         * this function resets the hours and minutes odometers to 0.
-         */
         function enforceMaxLimit() {
-            const daysOdometer = chronoOdometers.days;
-            if (daysOdometer.value === daysOdometer.config.max) {
-                if (chronoOdometers.hours.value !== 0) {
-                    chronoOdometers.hours.setValue(0, -1);
-                }
-                if (chronoOdometers.minutes.value !== 0) {
-                    chronoOdometers.minutes.setValue(0, -1);
+            if (paghiper_backend_settings.due_date_mode === 'minutes') {
+                const daysOdometer = chronoOdometers.days;
+                if (daysOdometer.value === daysOdometer.config.max) {
+                    if (chronoOdometers.hours.value !== 0) {
+                        chronoOdometers.hours.setValue(0, -1);
+                    }
+                    if (chronoOdometers.minutes.value !== 0) {
+                        chronoOdometers.minutes.setValue(0, -1);
+                    }
                 }
             }
         }
 
-        /**
-         * Initializes all odometer displays based on the initial expiration datetime value.
-         */
         function initChronoDisplays() {
             let initialValues = { days: 0, hours: 0, minutes: 0 };
-            const hiddenInputDate = paghiper_backend_settings.initial_datetime_value; // Get value from localized script
+            const hiddenInputDate = paghiper_backend_settings.initial_datetime_value;
     
             if (hiddenInputDate) {
-                // Parse YYYY-MM-DD HH:MM:SS format into a duration from now.
                 const dateParts = hiddenInputDate.match(/(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})/);
                 if (dateParts) {
                     const year = parseInt(dateParts[1], 10);
-                    const month = parseInt(dateParts[2], 10) - 1; // Month is 0-indexed
+                    const month = parseInt(dateParts[2], 10) - 1;
                     const day = parseInt(dateParts[3], 10);
                     const hours = parseInt(dateParts[4], 10);
                     const minutes = parseInt(dateParts[5], 10);
@@ -393,57 +388,62 @@ jQuery(document).ready( function($){
                 }
             }
     
-            // Create the odometer instances.
-            chronoOdometers.days = new OdometerDisplay($('#cron-days-backend'), initialValues.days, 'pix-days');
-            chronoOdometers.hours = new OdometerDisplay($('#cron-hours-backend'), initialValues.hours, 'hours');
-            chronoOdometers.minutes = new OdometerDisplay($('#cron-minutes-backend'), initialValues.minutes, 'minutes');
+            if (paghiper_backend_settings.due_date_mode === 'minutes') {
+                chronoOdometers.days = new OdometerDisplay($('#cron-days-backend-minutes'), initialValues.days, 'pix-days');
+                chronoOdometers.hours = new OdometerDisplay($('#cron-hours-backend'), initialValues.hours, 'hours');
+                chronoOdometers.minutes = new OdometerDisplay($('#cron-minutes-backend'), initialValues.minutes, 'minutes');
+            } else {
+                daysOdometer = new OdometerDisplay($('#cron-days-backend'), initialValues.days, 'pix-days');
+            }
             
-            // Run initial validation and update.
             enforceMaxLimit();
             updateTotalMinutes();
         }
 
-        // Check if we are on the PIX gateway settings page and the due date mode is 'minutes'.
-        if (paghiper_backend_settings.is_pix && paghiper_backend_settings.due_date_mode === 'minutes') {
-            initChronoDisplays();
+        initChronoDisplays();
 
-            // Attach click handlers to the increment/decrement chevron controls.
-            $('#paghiper-due-date-container .chevron-control').on('click', function() {
-                if ($('.odometer-input').length) {
-                    $('.odometer-input').trigger('blur');
-                    return;
-                }
-                const $this = $(this);
-                const unit = $this.data('unit');
-                const action = $this.data('action');
+        $('#paghiper-due-date-container .chevron-control').on('click', function() {
+            if ($('.odometer-input').length) {
+                $('.odometer-input').trigger('blur');
+                return;
+            }
+            const $this = $(this);
+            const unit = $this.data('unit');
+            const action = $this.data('action');
 
+            if (paghiper_backend_settings.due_date_mode === 'minutes') {
                 if (action === 'increment') {
-                    if (chronoOdometers[unit].increment()) { // if the clicked unit wrapped...
+                    if (chronoOdometers[unit].increment()) {
                         if (unit === 'minutes') {
-                            if (chronoOdometers.hours.increment()) { // ...and if hours also wrapped...
-                                chronoOdometers.days.increment(); // ...increment days.
+                            if (chronoOdometers.hours.increment()) {
+                                chronoOdometers.days.increment();
                             }
                         } else if (unit === 'hours') {
-                            chronoOdometers.days.increment(); // ...increment days.
+                            chronoOdometers.days.increment();
                         }
                     }
                 } else { // decrement
-                    if (chronoOdometers[unit].decrement()) { // if the clicked unit wrapped...
+                    if (chronoOdometers[unit].decrement()) {
                         if (unit === 'minutes') {
-                            if (chronoOdometers.hours.decrement()) { // ...and if hours also wrapped...
-                                chronoOdometers.days.decrement(); // ...decrement days.
+                            if (chronoOdometers.hours.decrement()) {
+                                chronoOdometers.days.decrement();
                             }
                         } else if (unit === 'hours') {
-                            chronoOdometers.days.decrement(); // ...decrement days.
+                            chronoOdometers.days.decrement();
                         }
                     }
                 }
+            } else {
+                if (action === 'increment') {
+                    daysOdometer.increment();
+                } else {
+                    daysOdometer.decrement();
+                }
+            }
 
-                // After changing a value, enforce the max limit and update the total.
-                enforceMaxLimit();
-                updateTotalMinutes();
-            });
-        }
+            enforceMaxLimit();
+            updateTotalMinutes();
+        });
     }
 
     // AJAX submission for new due date

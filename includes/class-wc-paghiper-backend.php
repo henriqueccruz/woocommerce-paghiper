@@ -213,55 +213,62 @@ class WC_Paghiper_Backend {
 
 			$html .= '<label for="woo_paghiper_expiration_date">' . sprintf( __( 'Redefinir vencimento do %s', 'woo_paghiper' ), (($gateway_name == 'paghiper_pix') ? __('PIX', 'woo_paghiper') : __('boleto', 'woo_paghiper'))) . '</label><br />';
 
-			if ($gateway_name === 'paghiper_pix' && $due_date_mode === 'minutes') {
+			$use_legacy_field = apply_filters('paghiper_use_legacy_due_date_field', false);
 
-				$html .= '<div id="paghiper-due-date-container">
-					<div id="minutes-mode-section" class="active">
-						<div class="cronometro-wrapper">
-							<div class="time-unit">
-								<span class="chevron-control" data-action="increment" data-unit="days">
-									<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><path d="m12 6.586-8.707 8.707 1.414 1.414L12 9.414l7.293 7.293 1.414-1.414L12 6.586z"/></svg>
-								</span>
-								<div class="days-display" id="cron-days-backend"></div>
-								<label>Dias</label>
-								<span class="chevron-control" data-action="decrement" data-unit="days">
-									<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><path d="M12 17.414 3.293 8.707l1.414-1.414L12 14.586l7.293-7.293 1.414 1.414L12 17.414z"/></svg>
-								</span>
-							</div>
-							<span class="time-separator">:</span>
-							<div class="time-unit">
-								<span class="chevron-control" data-action="increment" data-unit="hours">
-									<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><path d="m12 6.586-8.707 8.707 1.414 1.414L12 9.414l7.293 7.293 1.414-1.414L12 6.586z"/></svg>
-								</span>
-								<div class="hours-display" id="cron-hours-backend"></div>
-								<label>Horas</label>
-								<span class="chevron-control" data-action="decrement" data-unit="hours">
-									<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><path d="M12 17.414 3.293 8.707l1.414-1.414L12 14.586l7.293-7.293 1.414 1.414L12 17.414z"/></svg>
-								</span>
-							</div>
-							<span class="time-separator">:</span>
-							<div class="time-unit">
-								<span class="chevron-control" data-action="increment" data-unit="minutes">
-									<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><path d="m12 6.586-8.707 8.707 1.414 1.414L12 9.414l7.293 7.293 1.414-1.414L12 6.586z"/></svg>
-								</span>
-								<div class="minutes-display" id="cron-minutes-backend"></div>
-								<label>Minutos</label>
-								<span class="chevron-control" data-action="decrement" data-unit="minutes">
-									<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><path d="M12 17.414 3.293 8.707l1.414-1.414L12 14.586l7.293-7.293 1.414 1.414L12 17.414z"/></svg>
-								</span>
-							</div>
-						</div>
-					</div>
-										<input type="hidden" id="woo_paghiper_expiration_date" name="woo_paghiper_expiration_date" value="" />
-									</div>
-									<div id="paghiper-due-date-warning" class="notice notice-warning inline" style="display: none; margin: 10px 0;"><p></p></div>
-									<span class="description">' . __( 'Use os controles para definir a nova data e hora de vencimento. Ao configurar, o PIX é re-enviado ao cliente.', 'woo_paghiper' ) . '</span>';
-			} else {
+			if ($use_legacy_field) {
 				$html .= '<input type="text" id="woo_paghiper_expiration_date" name="woo_paghiper_expiration_date" class="date" style="width: 100%;" />';
-				$html .= '<span class="description">' . sprintf(__( 'Ao configurar uma nova data de vencimento, o %s é re-enviado ao cliente por e-mail.', 'woo_paghiper' ), (($gateway_name !== 'paghiper_pix') ? 'boleto' : 'PIX')) . '</span>';
+				$html .= '<span class="description">' . sprintf(__( 'Ao configurar uma nova data de vencimento, o %s é re-enviado ao cliente por e-mail.', 'woo_boleto-paghiper' ), (($gateway_name !== 'paghiper_pix') ? 'boleto' : 'PIX')) . '</span>';
+			} else {
+				$html .= '<div id="paghiper-due-date-container">';
+				
+				// Seção para o modo de dias
+				$html .= '<div id="days-mode-section" class="' . ($due_date_mode === 'days' ? 'active' : '') . '">';
+				$html .= '<div class="days-input-wrapper">';
+				$html .= '<div class="time-unit">';
+				$html .= '<span class="chevron-control" data-action="increment" data-unit="days"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><path d="m12 6.586-8.707 8.707 1.414 1.414L12 9.414l7.293 7.293 1.414-1.414L12 6.586z"/></svg></span>';
+				$html .= '<div class="days-display" id="cron-days-backend"></div>';
+				$html .= '<label>Dias</label>';
+				$html .= '<span class="chevron-control" data-action="decrement" data-unit="days"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><path d="M12 17.414 3.293 8.707l1.414-1.414L12 14.586l7.293-7.293 1.414 1.414L12 17.414z"/></svg></span>';
+				$html .= '</div>';
+				$html .= '</div>';
+				$html .= '</div>';
+
+				// Seção para o modo de minutos (cronômetro)
+				$html .= '<div id="minutes-mode-section" class="' . ($due_date_mode === 'minutes' ? 'active' : '') . '">';
+				$html .= '<div class="cronometro-wrapper">';
+				// Days
+				$html .= '<div class="time-unit">';
+				$html .= '<span class="chevron-control" data-action="increment" data-unit="days"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><path d="m12 6.586-8.707 8.707 1.414 1.414L12 9.414l7.293 7.293 1.414-1.414L12 6.586z"/></svg></span>';
+				$html .= '<div class="days-display" id="cron-days-backend-minutes"></div>';
+				$html .= '<label>Dias</label>';
+				$html .= '<span class="chevron-control" data-action="decrement" data-unit="days"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><path d="M12 17.414 3.293 8.707l1.414-1.414L12 14.586l7.293-7.293 1.414 1.414L12 17.414z"/></svg></span>';
+				$html .= '</div>';
+				$html .= '<span class="time-separator">:</span>';
+				// Hours
+				$html .= '<div class="time-unit">';
+				$html .= '<span class="chevron-control" data-action="increment" data-unit="hours"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><path d="m12 6.586-8.707 8.707 1.414 1.414L12 9.414l7.293 7.293 1.414-1.414L12 6.586z"/></svg></span>';
+				$html .= '<div class="hours-display" id="cron-hours-backend"></div>';
+				$html .= '<label>Horas</label>';
+				$html .= '<span class="chevron-control" data-action="decrement" data-unit="hours"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><path d="M12 17.414 3.293 8.707l1.414-1.414L12 14.586l7.293-7.293 1.414 1.414L12 17.414z"/></svg></span>';
+				$html .= '</div>';
+				$html .= '<span class="time-separator">:</span>';
+				// Minutes
+				$html .= '<div class="time-unit">';
+				$html .= '<span class="chevron-control" data-action="increment" data-unit="minutes"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><path d="m12 6.586-8.707 8.707 1.414 1.414L12 9.414l7.293 7.293 1.414-1.414L12 6.586z"/></svg></span>';
+				$html .= '<div class="minutes-display" id="cron-minutes-backend"></div>';
+				$html .= '<label>Minutos</label>';
+				$html .= '<span class="chevron-control" data-action="decrement" data-unit="minutes"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><path d="M12 17.414 3.293 8.707l1.414-1.414L12 14.586l7.293-7.293 1.414 1.414L12 17.414z"/></svg></span>';
+				$html .= '</div>';
+				$html .= '</div>';
+				$html .= '</div>';
+
+				$html .= '<input type="hidden" id="woo_paghiper_expiration_date" name="woo_paghiper_expiration_date" value="" />';
+				$html .= '</div>';
+				$html .= '<div id="paghiper-due-date-warning" class="notice notice-warning inline" style="display: none; margin: 10px 0;"><p></p></div>';
+				$html .= '<span class="description">' . __( 'Use os controles para definir a nova data e hora de vencimento. Ao configurar, o PIX é re-enviado ao cliente.', 'woo_boleto-paghiper' ) . '</span>';
 			}
 
-			$html .= '<div id="ph-reusable-notifications"></div>';
+						$html .= '<div id="ph-reusable-notifications"></div>';
 			wp_nonce_field( 'paghiper_resend_payment_nonce', 'paghiper_resend_nonce', false );
 			$html .= '<p class="submit" style="text-align: center;">';
 			$html .= '<button type="button" id="paghiper-resend-ajax-button" data-order-id="' . $order->get_id() . '" class="button button-primary">' . __('Definir e Reenviar', 'woo_paghiper') . '</button>';
