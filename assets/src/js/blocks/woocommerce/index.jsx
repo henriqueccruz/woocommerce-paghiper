@@ -123,7 +123,7 @@ const BilletLabel = ( props ) => {
 	return <PaymentMethodLabel text={ billetLabel } />
 }
 
-/*const PaghiperBillet = {
+const PaghiperBillet = {
 	name: "paghiper_billet",
 	label: <BilletLabel />,
 	content: <Content gatewayName="paghiper_billet" gatewayDescription={ billetSettings.description } />,
@@ -133,10 +133,10 @@ const BilletLabel = ( props ) => {
 	supports: {
 		features: billetSettings.supports,
 	}
-};*/
+};
 
 // Register payment methods
 if (typeof window.wc.wcBlocksRegistry !== 'undefined') {
     registerPaymentMethod(PaghiperPix);
-    //registerPaymentMethod(PaghiperBillet);
+    registerPaymentMethod(PaghiperBillet);
 }

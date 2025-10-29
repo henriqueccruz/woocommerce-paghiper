@@ -394,6 +394,7 @@ jQuery(document).ready( function($){
                 chronoOdometers.minutes = new OdometerDisplay($('#cron-minutes-backend'), initialValues.minutes, 'minutes');
             } else {
                 daysOdometer = new OdometerDisplay($('#cron-days-backend'), initialValues.days, 'pix-days');
+                console.log('Doing alternative init');
             }
             
             enforceMaxLimit();
@@ -453,6 +454,12 @@ jQuery(document).ready( function($){
         const button = $(this);
         const orderId = button.data('order-id');
         const totalMinutes = $('#woo_paghiper_expiration_date').val();
+
+        if (paghiper_backend_settings.due_date_mode === 'minutes' && totalMinutes < 5) {
+            if (!confirm(`A transação gerada vai expirar em apenas ${totalMinutes} minutos. Continuar?`)) {
+                return;
+            }
+        }
 
         const totalHours = totalMinutes / 60;
 

@@ -223,7 +223,8 @@ class WC_Paghiper_Base_Gateway {
 				'description' => __( 'Extremamente importante, você pode gerar seu token em nossa pagina: Painel > Ferramentas > Token.', 'woo-boleto-paghiper' ),
 			),
 			'due_date_options' => array(
-				'title' 	=> __( 'Vencimento do PIX', 'woocommerce-paghiper' ),
+				/* translators: %s: Transaction type. May be PIX or billet, for an example. */
+				'title' 	=> sprintf( __( 'Vencimento do %s', 'woocommerce-paghiper' ), $default_gateway_name),
 				'type'  	=> 'due_date_selector',
 				'class'		=> array( 'form-row-wide', 'minutes_due_date-container' ),
 			),
@@ -312,7 +313,7 @@ class WC_Paghiper_Base_Gateway {
 		);
 
 		if($this->isPIX) {
-			unset($first['skip_non_workdays'], $first['open_after_day_due']);
+			unset($first['skip_non_workdays'], $first['open_after_day_due'], $last['disable_email_gif']);
 		}
 
 		return array_merge( $first, $last );
@@ -336,16 +337,14 @@ class WC_Paghiper_Base_Gateway {
 			<td class="forminp">
 				<div id="paghiper-due-date-container">
 
-					<?php if ( $this->isPIX ) : ?>
-					<div class="mode-switcher">
+					<div class="mode-switcher<?php if ( !$this->isPIX ) echo ' disabled'; ?>">
 						<label>Dias</label>
 						<label class="switch">
-							<input type="checkbox" id="due-date-mode-toggle" <?php checked($mode, 'minutes'); ?>>
+							<input type="checkbox" id="due-date-mode-toggle" <?php checked($mode, 'minutes'); ?> <?php if ( !$this->isPIX ) echo 'disabled'; ?>>
 							<span class="slider round"></span>
 						</label>
 						<label>Cronômetro (Dias/Horas/Minutos)</label>
 					</div>
-					<?php endif; ?>
 
 					<div id="days-mode-section" class="<?php echo $mode === 'days' ? 'active' : ''; ?>">
 						<div class="days-input-wrapper">
