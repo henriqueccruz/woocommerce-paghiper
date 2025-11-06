@@ -53,7 +53,7 @@ $font_normal = __DIR__ . '/../fonts/AtkinsonHyperlegible-Regular.ttf';
 $font_mono = __DIR__ . '/../fonts/AtkinsonHyperlegibleMono-VariableFont_wght.ttf';
 
 // --- Funções para desenhar frames ---
-function create_countdown_frame($time, $config) {
+function create_countdown_frame($time, $config, $frame_index = 0) {
     extract($config);
     $frame = new Imagick();
     $frame->newImage($width, $height, new ImagickPixel('white'));
@@ -61,12 +61,33 @@ function create_countdown_frame($time, $config) {
     $frame->setImageDispose(Imagick::DISPOSE_BACKGROUND);
     $frame->setImageIterations($loop_behavior);
     $draw = new ImagickDraw();
-    $text = gmdate('H:i:s', $time);
-    $draw->setFont($font_bold);
-    $draw->setFontSize(20);
-    $draw->annotation(80, 150, "HORAS");
-    $draw->annotation(255, 150, "MINUTOS");
-    $draw->annotation(440, 150, "SEGUNDOS");
+
+    $is_long_format = $time >= 86400; // 24 hours in seconds
+
+    if ($is_long_format) {
+        $days = floor($time / 86400);
+        $remainder = $time % 86400;
+        $hours = floor($remainder / 3600);
+        $minutes = floor(($remainder % 3600) / 60);
+
+        $separator = ($frame_index % 2 == 0) ? ':' : ' ';
+
+        $text = sprintf('%02d%s%02d%s%02d', $days, $separator, $hours, $separator, $minutes);
+
+        $draw->setFont($font_bold);
+        $draw->setFontSize(20);
+        $draw->annotation(80, 150, "DIAS");
+        $draw->annotation(255, 150, "HORAS");
+        $draw->annotation(440, 150, "MINUTOS");
+    } else {
+        $text = gmdate('H:i:s', $time);
+        $draw->setFont($font_bold);
+        $draw->setFontSize(20);
+        $draw->annotation(80, 150, "HORAS");
+        $draw->annotation(255, 150, "MINUTOS");
+        $draw->annotation(440, 150, "SEGUNDOS");
+    }
+
     $draw->setFillColor('black');
     $draw->setFont($font_mono);
     $draw->setFontSize(100);
@@ -107,10 +128,10 @@ if ($is_longer_than_max) {
     $start_time = $seconds_to_generate;
     $end_time = $start_time - $max_time_in_seconds + 1;
     for ($i = $start_time; $i >= $end_time; $i--) {
-        $imagick->addImage(create_countdown_frame($i, $draw_config));
+        $imagick->addImage(create_countdown_frame($i, $draw_config, $i));
     }
 
-    $last_countdown_frame = create_countdown_frame($end_time - 1, $draw_config); // CORRIGIDO
+    $last_countdown_frame = create_countdown_frame($end_time - 1, $draw_config, $end_time - 1); // CORRIGIDO
 
     $update_text_frame = new Imagick();
     $update_text_frame->newImage($width, $height, new ImagickPixel('white'));
@@ -148,10 +169,10 @@ if ($is_longer_than_max) {
     if (!$is_expired) {
         $generation_time = $seconds_to_generate;
         for ($i = $generation_time; $i >= 1; $i--) {
-            $imagick->addImage(create_countdown_frame($i, $draw_config));
+            $imagick->addImage(create_countdown_frame($i, $draw_config, $i));
         }
     }
-    $zero_frame = create_countdown_frame(0, $draw_config);
+    $zero_frame = create_countdown_frame(0, $draw_config, 0);
     $expired_text_frame = create_text_frame('Expirado', $draw_config);
     for ($k = 0; $k < 11; $k++) {
         $imagick->addImage($k % 2 == 0 ? clone $zero_frame : clone $expired_text_frame);
