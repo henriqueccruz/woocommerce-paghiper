@@ -28,6 +28,9 @@ class WC_Paghiper_Admin {
 		// Define our default offset
 		$this->timezone = new DateTimeZone('America/Sao_Paulo');
 
+		// Initialize logging
+		$this->log = wc_paghiper_initialize_log('yes');
+
 		// Enqueue styles and assets
 		add_action( 'admin_enqueue_scripts', array( $this, 'load_plugin_assets' ) );
 
@@ -42,6 +45,12 @@ class WC_Paghiper_Admin {
 
 		// AJAX handler for testing credentials
 		add_action( 'wp_ajax_paghiper_test_credentials', array( $this, 'ajax_test_credentials' ) );
+
+		// AJAX handler for downloading timer assets
+		add_action( 'wp_ajax_paghiper_download_timer_assets', array( $this, 'ajax_download_timer_assets' ) );
+
+		// AJAX handler for checking timer assets status
+		add_action( 'wp_ajax_paghiper_get_timer_asset_status', array( $this, 'ajax_get_timer_asset_status' ) );
 	}
 
 	/**
@@ -86,6 +95,10 @@ class WC_Paghiper_Admin {
 	                    
 	                    wp_enqueue_style( 'wc-paghiper-admin' );
 	                    wp_enqueue_script( 'wc-paghiper-admin' );
+
+	                    // Enqueue scripts and styles for jQuery UI Dialog
+	                    wp_enqueue_script('jquery-ui-dialog');
+	                    wp_enqueue_style('wp-admin-dialog');
 	                }
 	
 	            }
@@ -105,10 +118,11 @@ class WC_Paghiper_Admin {
 		    		    $due_date_mode = isset($settings['due_date_mode']) ? $settings['due_date_mode'] : 'minutes';
 		    		    $due_date_value = isset($settings['due_date_value']) ? intval($settings['due_date_value']) : 0;
 		                $disable_email_gif = isset($settings['disable_email_gif']) ? $settings['disable_email_gif'] : 'no';
-		    
-		    		    // 23h 59m 50s em minutos é ~1439.8. Checamos por valores maiores que 1439.
-		    		    if ($due_date_mode === 'minutes' && $due_date_value > 1439 && $disable_email_gif !== 'yes') {		        include_once 'views/notices/html-notice-long-pix-expiration.php';
-		    }
+
+		    		    // 24h 00m 00s em minutos é ~1440. Checamos por valores maiores que isso.
+		    		    if ($due_date_mode === 'minutes' && $due_date_value > 1440 && $disable_email_gif !== 'yes') {
+					        include_once 'views/notices/html-notice-long-pix-expiration.php';
+					    }
 		}
 	
 		public function ajax_handle_long_expiration_notice() {
@@ -171,10 +185,11 @@ class WC_Paghiper_Admin {
 				wp_send_json_error( array( 'message' => 'API Key e Token são obrigatórios.' ) );
 			}
 
-			wc_paghiper_initialize_sdk();
 
 			try {
-				$PagHiperAPI = new PagHiper($api_key.'a', $token);
+				
+				wc_paghiper_initialize_sdk();
+				$PagHiperAPI = new PagHiper($api_key, $token);
 				$response = $PagHiperAPI->transaction()->status('0000000000000000');
 
 			} catch(Exception $e) {
@@ -189,6 +204,16 @@ class WC_Paghiper_Admin {
 				}
 
 				if (!empty($errors)) {
+
+					// Log error for debugging
+					wc_paghiper_add_log(
+						$this->log,
+						'Teste de credenciais falhou: ' . implode(' e ', $errors) . ' incorreto(s).',
+						['api_key' => $api_key, 'token' => $token, $response ?? 'No response', $e->getMessage()],
+						WC_Log_Levels::ERROR
+					);
+
+
 					$error_message = 'Credenciais inválidas: ' . implode(' e ', $errors) . ' incorreto(s).';
 					wp_send_json_error( array( 'message' => $error_message ) );
 				} else {
@@ -198,6 +223,137 @@ class WC_Paghiper_Admin {
 			
 			wp_send_json_success( array( 'message' => 'Credenciais válidas!' ) );
 
+		}
+
+		private function setup_timer_directory() {
+			global $wp_filesystem;
+			if ( ! $wp_filesystem ) {
+				require_once ABSPATH . 'wp-admin/includes/file.php';
+				WP_Filesystem();
+			}
+		
+			$upload_dir = wp_upload_dir();
+			$timers_dir = $upload_dir['basedir'] . '/paghiper-timers';
+		
+			if ( ! $wp_filesystem->exists( $timers_dir ) ) {
+				if ( ! $wp_filesystem->mkdir( $timers_dir, FS_CHMOD_DIR ) ) {
+					return new WP_Error('dir_creation_failed', 'Não foi possível criar o diretório para os cronômetros.');
+				}
+			}
+		
+			return $timers_dir;
+		}
+
+		public function ajax_download_timer_assets() {
+			check_ajax_referer( 'paghiper-admin-ajax-nonce', 'nonce' );
+		
+			if ( ! current_user_can( 'manage_options' ) ) {
+				wp_send_json_error( array( 'message' => 'Permissão insuficiente.' ), 403 );
+			}
+		
+			$bundle_number = isset( $_POST['bundle'] ) ? intval( $_POST['bundle'] ) : 0;
+		
+			if ( $bundle_number < 1 || $bundle_number > 24 ) {
+				wp_send_json_error( array( 'message' => 'Número do pacote inválido.' ), 400 );
+			}
+		
+			$timers_dir = $this->setup_timer_directory();
+			if ( is_wp_error( $timers_dir ) ) {
+				wp_send_json_error( array( 'message' => $timers_dir->get_error_message() ) );
+			}
+		
+			// Os pacotes são de 1 a 24, mas os diretórios serão de 0 a 23
+			$destination_dir = $timers_dir . '/' . ( $bundle_number - 1 );
+
+			// Garante que o diretório de destino específico do pacote exista
+			global $wp_filesystem;
+			if ( ! $wp_filesystem->exists( $destination_dir ) ) {
+				if ( ! $wp_filesystem->mkdir( $destination_dir, FS_CHMOD_DIR ) ) {
+					wp_send_json_error( array( 'message' => 'Falha ao criar o sub-diretório para o pacote ' . $bundle_number . '. Verifique as permissões de escrita.' ) );
+				}
+			}
+		
+			// URL do pacote
+			$package_url = 'https://paghiper.henriquecruz.com.br/chrono-gif-pack/' . $bundle_number . '.zip';
+		
+			// Inclui os arquivos necessários para download e extração
+			require_once ABSPATH . 'wp-admin/includes/file.php';
+			require_once ABSPATH . 'wp-admin/includes/media.php';
+			require_once ABSPATH . 'wp-admin/includes/misc.php';
+		
+			// Baixa o arquivo para um local temporário
+			$temp_file = download_url( $package_url );
+
+			wc_paghiper_add_log( $this->log, sprintf('Tentativa de download do pacote %d. URL: %s', $bundle_number, $package_url), ['resultado' => $temp_file] );
+		
+			if ( is_wp_error( $temp_file ) ) {
+				wc_paghiper_add_log( $this->log, 'Falha detectada no download (is_wp_error is true). Retornando erro JSON.', ['erro' => $temp_file->get_error_message()] );
+				wp_send_json_error( array( 'message' => 'Falha no download do pacote ' . $bundle_number . ': ' . $temp_file->get_error_message() ) );
+			}
+		
+			// Extrai o ZIP
+			$unzip_result = unzip_file( $temp_file, $destination_dir );
+			unlink( $temp_file ); // Deleta o arquivo temporário
+
+			wc_paghiper_add_log( $this->log, sprintf('Tentativa de extrair o pacote %d.', $bundle_number), ['resultado' => $unzip_result] );
+		
+			if ( is_wp_error( $unzip_result ) ) {
+				wc_paghiper_add_log( $this->log, 'Falha detectada na extração (is_wp_error is true). Retornando erro JSON.', ['erro' => $unzip_result->get_error_message()] );
+				wp_send_json_error( array( 'message' => 'Falha ao extrair o pacote ' . $bundle_number . ': ' . $unzip_result->get_error_message() ) );
+			}
+		
+			wp_send_json_success( array( 'message' => 'Pacote ' . $bundle_number . ' instalado com sucesso.' ) );
+		}
+
+		public function ajax_get_timer_asset_status() {
+			check_ajax_referer( 'paghiper-admin-ajax-nonce', 'nonce' );
+		
+			if ( ! current_user_can( 'manage_options' ) ) {
+				wp_send_json_error( array( 'message' => 'Permissão insuficiente.' ), 403 );
+			}
+		
+			$bundles_needed = isset( $_POST['bundles_needed'] ) ? absint( $_POST['bundles_needed'] ) : 0;
+			if ( $bundles_needed < 1 || $bundles_needed > 24 ) {
+				wp_send_json_error( array( 'message' => 'Número de pacotes necessários inválido.' ), 400 );
+			}
+		
+			$timers_dir = $this->setup_timer_directory();
+			if ( is_wp_error( $timers_dir ) ) {
+				wp_send_json_error( array( 'message' => $timers_dir->get_error_message() ) );
+			}
+		
+			$missing_bundles = array();
+			for ( $i = 1; $i <= $bundles_needed; $i++ ) {
+				$bundle_dir = $timers_dir . '/' . ( $i - 1 );
+				if ( ! is_dir( $bundle_dir ) ) {
+					$missing_bundles[] = $i;
+				}
+			}
+		
+			if ( ! empty( $missing_bundles ) ) {
+				$size_map_mb = [
+					1 => 335, 2 => 395, 3 => 395, 4 => 395, 5 => 395, 6 => 395, 7 => 395, 8 => 395, 9 => 395, 10 => 395, 11 => 395,
+					12 => 390, 13 => 390, 14 => 390, 15 => 390, 16 => 390, 17 => 390, 18 => 390, 19 => 390, 20 => 390,
+					21 => 395, 22 => 390, 23 => 390, 24 => 390
+				];
+
+				$required_space = 0;
+				foreach($missing_bundles as $bundle_num) {
+					if(isset($size_map_mb[$bundle_num])) {
+						$required_space += $size_map_mb[$bundle_num] * 1024 * 1024;
+					}
+				}
+
+				$free_space = @disk_free_space( $timers_dir );
+		
+				if ( $free_space === false || $free_space < $required_space ) {
+					$required_space_gb = round($required_space / (1024 * 1024 * 1024), 2);
+					$free_space_gb = round($free_space / (1024 * 1024 * 1024), 2);
+					wp_send_json_error( array( 'message' => sprintf('Espaço em disco insuficiente. É necessário ~%s GB, mas apenas %s GB estão disponíveis.', $required_space_gb, $free_space_gb) ) );
+				}
+			}
+		
+			wp_send_json_success( array( 'missing_bundles' => $missing_bundles ) );
 		}
 }
 
