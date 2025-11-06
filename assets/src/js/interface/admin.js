@@ -468,4 +468,189 @@ jQuery(function ($) {
             }
         });
     });
+
+    // --- Início da lógica do Downloader de Cronômetros ---
+    const downloader = {
+        form: $('form#mainform'),
+        modal: $('#paghiper-downloader-modal'),
+        progressBar: $('#paghiper-downloader-modal .paghiper-progress'),
+        statusMessage: $('#paghiper-downloader-modal .paghiper-status-message'),
+        initialMessage: $('#paghiper-downloader-modal .paghiper-modal-initial-message'),
+        isDownloading: false,
+
+        init: function() {
+            this.form.on('submit', this.handleSubmit.bind(this));
+        },
+
+        openModal: function() {
+            this.modal.dialog({
+                modal: true,
+                width: 500,
+                closeOnEscape: false,
+                draggable: false,
+                resizable: false,
+                open: function(event, ui) {
+                    $(this).parent().find('.ui-dialog-titlebar-close').hide();
+                }
+            });
+        },
+
+        closeModal: function() {
+            if (this.modal.is(":ui-dialog")) {
+                this.modal.dialog('close');
+            }
+        },
+
+        updateProgress: function(percentage, message) {
+            this.progressBar.css('width', percentage + '%').text(Math.round(percentage) + '%');
+            this.statusMessage.text(message);
+        },
+
+        showError: function(message) {
+            this.isDownloading = false;
+            this.initialMessage.hide();
+            this.progressBar.css('background-color', '#dc3232');
+            this.updateProgress(100, 'Erro!');
+            this.statusMessage.html(message + '<br/><br/><button class="button button-primary" id="close-downloader-modal">Fechar</button>');
+            $('#close-downloader-modal').on('click', this.closeModal.bind(this));
+        },
+
+        downloadBundle: function(bundleNumber) {
+            return $.post(ajaxurl, {
+                action: 'paghiper_download_timer_assets',
+                nonce: paghiper_settings.nonce,
+                bundle: bundleNumber
+            });
+        },
+
+        downloadSequentially: function(bundles) {
+            // 1. Create ONE deferred object for the whole sequence.
+            const deferred = $.Deferred();
+            const total = bundles.length;
+            let currentIndex = 0;
+
+            // 2. Create a recursive function `next`.
+            const next = () => {
+                // 3. Check for the exit condition.
+                if (currentIndex >= total) {
+                    deferred.resolve(); // If all downloads are done, resolve the main promise.
+                    return;
+                }
+
+                // 4. Get the current bundle and update progress.
+                const bundle = bundles[currentIndex];
+                const percentage = ((currentIndex + 1) / total) * 100;
+                this.updateProgress(percentage, `Baixando pacote ${currentIndex + 1} de ${total}...`);
+
+                // 5. Call the download function for the current bundle.
+                this.downloadBundle(bundle)
+                    .done((response) => {
+                        // 6. Manually check the response for WP-style errors.
+                        if (response.success) {
+                            // If successful, increment index and call next() to download the next bundle.
+                            currentIndex++;
+                            next();
+                        } else {
+                            // If WP returned an error, show it and reject the main promise.
+                            const errorMsg = response.data && response.data.message ? response.data.message : 'Ocorreu um erro no servidor.';
+                            this.showError(errorMsg);
+                            deferred.reject();
+                        }
+                    })
+                    .fail((xhr) => {
+                        // 7. Handle genuine network/server errors.
+                        const errorMsg = 'Falha de comunicação com o servidor. Verifique sua conexão e os logs de erro do PHP.';
+                        this.showError(errorMsg);
+                        deferred.reject(); // Reject the main promise.
+                    });
+            };
+
+            // 8. Start the recursive sequence.
+            next();
+
+            // 9. Return the promise of the main deferred object.
+            return deferred.promise();
+        },
+
+        handleSubmit: function(e) {
+            // Se já estamos no processo de download, não faça nada
+            if (this.isDownloading) {
+                e.preventDefault();
+                return;
+            }
+
+            // Condições para acionar o downloader
+            const isPixPage = paghiper_settings.gateway_id === 'paghiper_pix';
+            const isMinutesMode = $('#due-date-mode-toggle').is(':checked');
+            const isGifDisabled = $('#woocommerce_paghiper_pix_disable_email_gif').is(':checked');
+
+            // Se não for a página do PIX, ou não for modo minutos, ou o GIF estiver desativado, ou o check já passou, deixa salvar normal
+            if (!isPixPage || !isMinutesMode || isGifDisabled || this.form.find('#paghiper_assets_checked').length > 0) {
+                return;
+            }
+
+            e.preventDefault();
+            this.isDownloading = true;
+            this.openModal();
+
+            // Reset modal UI from previous runs
+            this.modal.find('#paghiper-progress').css('background-color', '#4CAF50');
+            this.modal.find('#paghiper-modal-initial-message').show();
+            this.updateProgress(0, '');
+
+            const totalMinutes = parseInt(valueInput.val(), 10) || 0;
+            const bundles_needed = Math.ceil(totalMinutes / 60);
+
+            this.updateProgress(0, 'Verificando pacotes necessários...');
+
+            $.post(ajaxurl, {
+                action: 'paghiper_get_timer_asset_status',
+                nonce: paghiper_settings.nonce,
+                bundles_needed: bundles_needed
+            }).done(response => {
+                if (!response.success) {
+                    this.showError(response.data.message);
+                    return;
+                }
+
+                const missing = response.data.missing_bundles;
+                if (missing.length === 0) {
+                    this.updateProgress(100, 'Recursos já estão instalados e verificados!');
+                    setTimeout(() => {
+                        this.isDownloading = false;
+                        this.closeModal();
+                        this.form.append('<input type="hidden" id="paghiper_assets_checked" name="paghiper_assets_checked" value="1">');
+                        console.log('Submitting with due_date_value:', valueInput.val());
+                        this.form.find('button[name="save"]').click();
+                    }, 1500);
+                    return;
+                }
+
+                this.downloadSequentially(missing).done(() => {
+                    this.progressBar.css('background-color', '#4CAF50');
+                    this.updateProgress(100, 'Todos os pacotes foram instalados com sucesso!');
+                    setTimeout(() => {
+                        this.isDownloading = false;
+                        this.closeModal();
+                        this.form.append('<input type="hidden" id="paghiper_assets_checked" name="paghiper_assets_checked" value="1">');
+                        this.form.find('button[name="save"]').click();
+                    }, 1500);
+                }).fail(() => {
+                    // This block catches the rejection from the download chain.
+                    // The error is already displayed by the handler inside downloadSequentially.
+                    // This simply prevents the "unhandled promise rejection" error in the console.
+                    console.log("Download sequence failed and was caught.");
+                });
+
+            }).fail((xhr) => {
+                const errorMsg = 'Falha na comunicação com o servidor ao verificar o status dos pacotes. (Status: ' + xhr.status + ' ' + xhr.statusText + '). Verifique os logs do servidor para mais detalhes.';
+                this.showError(errorMsg);
+            });
+        }
+    };
+
+    if (typeof paghiper_settings !== 'undefined' && paghiper_settings.gateway_id === 'paghiper_pix') {
+        downloader.init();
+    }
+    // --- Fim da lógica do Downloader de Cronômetros ---
 });
