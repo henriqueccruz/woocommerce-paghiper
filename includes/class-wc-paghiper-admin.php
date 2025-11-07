@@ -411,9 +411,8 @@ class WC_Paghiper_Admin {
 						wp_send_json_error( array( 'message' => 'A atualização falhou. O arquivo do plugin pode estar mal formatado ou a versão já está instalada.' ) );
 					}
 			
-					// Reactivate the plugin
-					$plugin_slug = 'woo-boleto-paghiper/woocommerce-paghiper.php';
-					$activation_result = activate_plugin( $plugin_slug );
+							// Reactivate the plugin
+							$plugin_slug = plugin_basename( WC_PAGHIPER_PLUGIN_FILE );					$activation_result = activate_plugin( $plugin_slug );
 			
 					if ( is_wp_error( $activation_result ) ) {
 						wp_send_json_error( array( 'message' => 'Falha ao reativar o plugin após a atualização: ' . $activation_result->get_error_message() ) );
