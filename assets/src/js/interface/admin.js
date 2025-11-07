@@ -483,6 +483,7 @@ jQuery(function ($) {
         },
 
         openModal: function() {
+            $('body').css('overflow', 'hidden')
             this.modal.dialog({
                 modal: true,
                 width: 500,
@@ -490,27 +491,36 @@ jQuery(function ($) {
                 draggable: false,
                 resizable: false,
                 open: function(event, ui) {
+                    let titlebar        = $(this).parent().find(".ui-dialog-titlebar"),
+                        targetContainer = $(this).parent().find(".paghiper-modal-content");
+
+                    titlebar.prependTo(targetContainer);
                     $(this).parent().find('.ui-dialog-titlebar-close').hide();
                 }
             });
         },
 
         closeModal: function() {
+            $('body').css('overflow', '');
             if (this.modal.is(":ui-dialog")) {
                 this.modal.dialog('close');
             }
         },
 
         updateProgress: function(percentage, message) {
-            this.progressBar.css('width', percentage + '%').text(Math.round(percentage) + '%');
+            this.progressBar.css({
+                width: percentage + '%',
+                backgroundColor: '#4CAF50',
+                color: '#fff'
+            }).text(Math.round(percentage) + '%');
             this.statusMessage.text(message);
         },
 
         showError: function(message) {
             this.isDownloading = false;
-            this.initialMessage.hide();
+            //this.initialMessage.hide();
+            this.updateProgress(100, 'Erro.');
             this.progressBar.css('background-color', '#dc3232');
-            this.updateProgress(100, 'Erro!');
             this.statusMessage.html(message + '<br/><br/><button class="button button-primary" id="close-downloader-modal">Fechar</button>');
             $('#close-downloader-modal').on('click', this.closeModal.bind(this));
         },
@@ -594,8 +604,13 @@ jQuery(function ($) {
             this.openModal();
 
             // Reset modal UI from previous runs
-            this.modal.find('#paghiper-progress').css('background-color', '#4CAF50');
-            this.modal.find('#paghiper-modal-initial-message').show();
+            this.progressBar.css({
+                width: '100%',
+                backgroundColor: 'transparent',
+                color: '#2c3338'
+            });
+            
+            this.modal.find('.paghiper-modal-initial-message').show();
             this.updateProgress(0, '');
 
             const totalMinutes = parseInt(valueInput.val(), 10) || 0;
@@ -653,4 +668,6 @@ jQuery(function ($) {
         downloader.init();
     }
     // --- Fim da lógica do Downloader de Cronômetros ---
+
+    window.paghiperDownloader = downloader;
 });

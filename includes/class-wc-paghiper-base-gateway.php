@@ -428,12 +428,14 @@ class WC_Paghiper_Base_Gateway {
 						</div>
 					</div>
 
-					<div class="paghiper-modal" id="paghiper-downloader-modal" title="Gerenciador de Cronômetros">
-						<p class="paghiper-modal-initial-message">O sistema está verificando e baixando os recursos necessários para o cronômetro de e-mail. Por favor, aguarde. O salvamento continuará automaticamente.</p>
-						<div class="paghiper-progress-bar">
-							<div class="paghiper-progress">0%</div>
+					<div class="paghiper-modal" id="paghiper-downloader-modal" title="Cronômetros">
+						<div class="paghiper-modal-content">
+							<p class="paghiper-modal-initial-message">O sistema está verificando e baixando os recursos necessários para exibir cronômetros nos e-mails para os seus clientes. Por favor, aguarde. Suas configurações serão salvas ao final desse processo.</p>
+							<div class="paghiper-progress-bar">
+								<div class="paghiper-progress" style="width: 100%; background-color: transparent; color: #2c3338">0%</div>
+							</div>
+							<p class="paghiper-status-message"></p>
 						</div>
-						<p class="paghiper-status-message"></p>
 					</div>
 					<?php endif; ?>
 
