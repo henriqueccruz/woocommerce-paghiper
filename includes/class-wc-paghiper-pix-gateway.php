@@ -80,6 +80,10 @@ class WC_Paghiper_Pix_Gateway extends WC_Payment_Gateway {
 		return $this->paghiper_gateway->process_payment( $order_id, $is_frontend = true );
 	}
 
+	public function generate_version_manager_html( $key, $data ) {
+		return $this->paghiper_gateway->generate_version_manager_html( $key, $data );
+	}
+
 	public function generate_credentials_button_html( $key, $data ) {
 		return $this->paghiper_gateway->generate_credentials_button_html( $key, $data );
 	}

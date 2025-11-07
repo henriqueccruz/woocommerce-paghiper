@@ -72,7 +72,7 @@ class WC_Paghiper_Base_Gateway {
      * @return string 
      */ 
     public function currency_not_supported_message() { 
-		if($this->gateway->id == 'paghiper_pix') {
+		if($this->isPIX) {
 			$gateway_name = __('PIX Paghiper', 'woo-boleto-paghiper');
 		} else {
 			$gateway_name = __('Boleto Paghiper', 'woo-boleto-paghiper');
@@ -178,19 +178,18 @@ class WC_Paghiper_Base_Gateway {
 		$default_title 			= $this->isPIX ? 'PIX' : 'Boleto Bancário';
 		$default_description	= $this->isPIX ? 'Pague de maneira rápida e segura com PIX' : 'Pague com Boleto Bancário';
 
-		$default_gateway_name 	= ($this->gateway->id == 'paghiper_pix') ? __('PIX', 'woo-boleto-paghiper') : __('boleto', 'woo-boleto-paghiper');
+		$default_gateway_name 	= $this->isPIX ? __('PIX', 'woo-boleto-paghiper') : __('boleto', 'woo-boleto-paghiper');
 
 		$first = array(
 			'enabled' => array(
 				'title'   => $default_label,
 				'type'    => 'checkbox',
 				'label'   => __( 'Ativar/Desativar', 'woo-boleto-paghiper' ),
-				'description' => sprintf( 
-					__( 'Você está usando a versão <strong>%s</strong> do gateway %s da PagHiper.', 'woo-boleto-paghiper' ), 
-					WC_Paghiper::get_plugin_version(),
-					$default_title 
-			),
 				'default' => 'yes'
+			),
+			'version_manager' => array(
+				'type' => 'version_manager',
+				'title' => __('Gerenciador de Versões', 'woo-boleto-paghiper'),
 			),
 			'title' => array(
 				'title'       => __( 'Título', 'woo-boleto-paghiper' ),
@@ -208,7 +207,7 @@ class WC_Paghiper_Base_Gateway {
 			),
 			'paghiper_details' => array(
 				/* translators: %s: Transaction type. May be PIX or billet, for an example. */
-				'title' => sprintf(__( 'Configurações do PagHiper %s', 'woo-boleto-paghiper' ), (($this->gateway->id == 'paghiper_pix') ? __('PIX', 'woo-boleto-paghiper') : __('Boleto bancário', 'woo-boleto-paghiper')) ),
+				'title' => sprintf(__( 'Configurações do PagHiper %s', 'woo-boleto-paghiper' ), ($this->isPIX ? __('PIX', 'woo-boleto-paghiper') : __('Boleto bancário', 'woo-boleto-paghiper')) ),
 				'type'  => 'title'
 			),
 			'api_key' => array(
@@ -317,9 +316,7 @@ class WC_Paghiper_Base_Gateway {
 
 		if($this->isPIX) {
 			unset($first['skip_non_workdays'], $first['open_after_day_due']);
-		}
-
-		if($this->gateway->id !== 'paghiper_pix') {
+		} else {
 			unset($last['disable_email_gif']);
 		}
 
@@ -796,7 +793,7 @@ class WC_Paghiper_Base_Gateway {
 		$transaction_due_date->setTimezone($this->timezone);
 
 		// Usa o modo e valor do novo seletor, definidos no construtor
-		if ($this->due_date_mode === 'minutes' && $gateway_name === 'paghiper_pix') {
+		if ($this->due_date_mode === 'minutes' && $this->isPIX) {
 			// Lógica para modo Minutos
 			$minutes_to_add = absint($this->due_date_value);
 			if ($minutes_to_add > 0) {
@@ -811,13 +808,13 @@ class WC_Paghiper_Base_Gateway {
 				$transaction_due_date->modify( "+{$days_to_add} days" );
             }
 			// Ajusta para não vencer em fins de semana, se configurado
-			$maybe_skip_non_workdays = ($gateway_name == 'paghiper_pix') ? null : $this->skip_non_workdays;
+			$maybe_skip_non_workdays = $this->isPIX ? null : $this->skip_non_workdays;
 			$transaction_due_date = wc_paghiper_add_workdays($transaction_due_date, $order, 'date', $maybe_skip_non_workdays);
 		}
 
 		// Salva a data no formato Y-m-d para compatibilidade
 		$data['order_transaction_due_date'] = $transaction_due_date->format('Y-m-d');
-		$data['transaction_type'] = ($gateway_name == 'paghiper_pix') ? 'pix' : 'billet';
+		$data['transaction_type'] = $this->isPIX ? 'pix' : 'billet';
 
 		// Salva os dados atuais do modo e valor de vencimento
 		if($this->due_date_mode === 'minutes') {
@@ -833,7 +830,7 @@ class WC_Paghiper_Base_Gateway {
 				$this->log, 
 				sprintf( 'Pedido #%s: Dados iniciais para o %s preparados.', 
 					$order->get_id(), 
-					(($this->gateway->id == 'paghiper_pix') ? 'PIX' : 'boleto'), 
+					($this->isPIX ? 'PIX' : 'boleto'), 
 				),
 				['transaction_data' => $data]
 			);
@@ -1040,12 +1037,102 @@ class WC_Paghiper_Base_Gateway {
 				$this->log, 
 				sprintf( 'Pedido #%s: Instruções de pagamento enviadas.', 
 					$order->get_id(), 
-					(($this->gateway->id == 'paghiper_pix') ? 'PIX' : 'boleto'), 
+					($this->isPIX ? 'PIX' : 'boleto'), 
 				),
 				['transaction_data' => $data]
 			);
 		}
 
 		echo wp_kses_post($html);
+	}
+
+	public function generate_version_manager_html( $key, $data ) {
+		$status = $this->get_github_version_status();
+		ob_start();
+		?>
+		<tr valign="top">
+			<th scope="row" class="titledesc">
+				<label><?php echo esc_html( $data['title'] ); ?></label>
+			</th>
+			<td class="forminp">
+				<div id="paghiper-version-manager">
+					<p class="description">
+						<?php printf( 
+							__( 'Você está usando a versão <strong>%s</strong> do gateway %s da PagHiper.', 'woo-boleto-paghiper' ), 
+							WC_Paghiper::get_plugin_version(),
+							$this->isPIX ? __( 'PIX', 'woo-boleto-paghiper' ) : __( 'Boleto', 'woo-boleto-paghiper' )
+						); ?>
+					</p>
+					<p class="description">
+						<?php _e( 'Caso enfrente problemas, você pode usar esta ferramenta para instalar uma versão de pré-lançamento (beta) ou reinstalar a versão estável mais recente diretamente do GitHub.', 'woo-boleto-paghiper' ); ?>
+					</p>
+					<?php if ( $status['action'] === 'update_official' ) : ?>
+						<a href="<?php echo esc_url( admin_url( 'update-core.php' ) ); ?>" class="button-primary">
+							<?php printf( esc_html__( 'Versão oficial %s disponível. Atualize agora.', 'woo-boleto-paghiper' ), esc_html( $status['version'] ) ); ?>
+						</a>
+					<?php elseif ( $status['action'] === 'install_beta' ) : ?>
+						<button id="paghiper-install-beta" type="button" class="button" data-version="<?php echo esc_attr( $status['version'] ); ?>">
+							<?php printf( esc_html__( 'Instalar pré-release de emergência (v%s)', 'woo-boleto-paghiper' ), esc_html( $status['version'] ) ); ?>
+						</button>
+					<?php else : ?>
+						<p><strong><?php _e( 'Você já está usando a versão mais recente.', 'woo-boleto-paghiper' ); ?></strong></p>
+					<?php endif; ?>
+					<span class="spinner" style="float: none; margin-top: 0;"></span>
+					<div id="paghiper-version-list-container" style="margin-top: 15px;"></div>
+				</div>
+			</td>
+		</tr>
+		<?php
+		return ob_get_clean();
+	}
+
+	private function get_github_version_status() {
+		$transient_key = 'paghiper_github_releases';
+		$releases = get_transient( $transient_key );
+
+		if ( false === $releases ) {
+			$response = wp_remote_get( 'https://api.github.com/repos/paghiper/woocommerce-paghiper/releases' );
+
+			if ( is_wp_error( $response ) || 200 !== wp_remote_retrieve_response_code( $response ) ) {
+				return array( 'action' => 'none', 'error' => 'Failed to fetch from GitHub API.' );
+			}
+
+			$releases = json_decode( wp_remote_retrieve_body( $response ), true );
+			set_transient( $transient_key, $releases, 2 * HOUR_IN_SECONDS );
+		}
+
+		if ( empty( $releases ) || ! is_array( $releases ) ) {
+			return array( 'action' => 'none' );
+		}
+
+		$current_version = WC_Paghiper::get_plugin_version();
+		$latest_stable = null;
+		$latest_prerelease = null;
+
+		foreach ( $releases as $release ) {
+			if ( ! is_array( $release ) || empty( $release['tag_name'] ) ) continue;
+
+			$version = ltrim( $release['tag_name'], 'v' );
+
+			if ( $release['prerelease'] ) {
+				if ( null === $latest_prerelease || version_compare( $version, $latest_prerelease, '>' ) ) {
+					$latest_prerelease = $version;
+				}
+			} else {
+				if ( null === $latest_stable || version_compare( $version, $latest_stable, '>' ) ) {
+					$latest_stable = $version;
+				}
+			}
+		}
+
+		if ( null !== $latest_stable && version_compare( $latest_stable, $current_version, '>' ) ) {
+			return array( 'action' => 'update_official', 'version' => $latest_stable );
+		}
+
+		if ( null !== $latest_prerelease && version_compare( $latest_prerelease, $current_version, '>' ) ) {
+			return array( 'action' => 'install_beta', 'version' => $latest_prerelease );
+		}
+
+		return array( 'action' => 'none' );
 	}
 }

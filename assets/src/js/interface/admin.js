@@ -670,4 +670,46 @@ jQuery(function ($) {
     // --- Fim da lógica do Downloader de Cronômetros ---
 
     window.paghiperDownloader = downloader;
+
+    // --- Início da lógica do Instalador de Versão Beta ---
+    const betaInstaller = {
+        button: $('#paghiper-install-beta'),
+        downloader: downloader, // Reutiliza o modal e os métodos do downloader
+
+        init: function() {
+            if (this.button.length) {
+                this.button.on('click', this.handleInstall.bind(this));
+            }
+        },
+
+        handleInstall: function(e) {
+            e.preventDefault();
+            const version = this.button.data('version');
+
+            this.downloader.isDownloading = true;
+            this.downloader.openModal();
+            this.downloader.updateProgress(0, 'Iniciando instalação da versão ' + version + '...');
+
+            $.post(ajaxurl, {
+                action: 'paghiper_install_beta_version',
+                nonce: paghiper_settings.nonce,
+                version: version
+            }).done(response => {
+                if (response.success) {
+                    this.downloader.updateProgress(100, response.data.message);
+                    setTimeout(() => location.reload(), 2000);
+                } else {
+                    this.downloader.showError(response.data.message || 'Ocorreu um erro desconhecido.');
+                }
+            }).fail(xhr => {
+                const errorMsg = (xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message) 
+                               ? xhr.responseJSON.data.message 
+                               : 'Falha na comunicação com o servidor (Status: ' + xhr.status + '). Verifique os logs.';
+                this.downloader.showError(errorMsg);
+            });
+        }
+    };
+
+    betaInstaller.init();
+    // --- Fim da lógica do Instalador de Versão Beta ---
 });

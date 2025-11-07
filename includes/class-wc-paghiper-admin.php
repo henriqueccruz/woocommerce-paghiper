@@ -51,6 +51,9 @@ class WC_Paghiper_Admin {
 
 		// AJAX handler for checking timer assets status
 		add_action( 'wp_ajax_paghiper_get_timer_asset_status', array( $this, 'ajax_get_timer_asset_status' ) );
+
+		// AJAX handler for installing beta versions from GitHub
+		add_action( 'wp_ajax_paghiper_install_beta_version', array( $this, 'ajax_install_beta_version' ) );
 	}
 
 	/**
@@ -353,8 +356,70 @@ class WC_Paghiper_Admin {
 				}
 			}
 		
-			wp_send_json_success( array( 'missing_bundles' => $missing_bundles ) );
-		}
-}
+					wp_send_json_success( array( 'missing_bundles' => $missing_bundles ) );
+				}
+			
+				public function ajax_install_beta_version() {
+					check_ajax_referer( 'paghiper-admin-ajax-nonce', 'nonce' );
+			
+					if ( ! current_user_can( 'update_plugins' ) ) {
+						wp_send_json_error( array( 'message' => 'Permissão insuficiente para atualizar plugins.' ), 403 );
+					}
+			
+					$version_to_install = isset( $_POST['version'] ) ? sanitize_text_field( $_POST['version'] ) : '';
+					if ( empty( $version_to_install ) ) {
+						wp_send_json_error( array( 'message' => 'Nenhuma versão especificada para instalação.' ), 400 );
+					}
+			
+					// Re-fetch release data from cache to find the download URL
+					$releases = get_transient( 'paghiper_github_releases' );
+					if ( false === $releases || ! is_array( $releases ) ) {
+						// If cache is expired, we can't proceed. User should refresh.
+						wp_send_json_error( array( 'message' => 'O cache de versões do GitHub expirou. Por favor, recarregue a página e tente novamente.' ) );
+					}
+			
+					$download_url = '';
+					foreach ( $releases as $release ) {
+						if ( ! empty( $release['tag_name'] ) && ltrim( $release['tag_name'], 'v' ) === $version_to_install ) {
+							$download_url = $release['zipball_url'];
+							break;
+						}
+					}
+			
+					if ( empty( $download_url ) ) {
+						wp_send_json_error( array( 'message' => 'Não foi possível encontrar a URL de download para a versão ' . esc_html( $version_to_install ) . '.' ) );
+					}
+			
+					include_once( ABSPATH . 'wp-admin/includes/class-wp-upgrader.php' );
+					
+					// Use a custom skin to capture output
+					require_once WC_Paghiper::get_plugin_path() . 'includes/class-wc-paghiper-upgrader-skin.php';
+			
+					$skin     = new WC_PagHiper_Upgrader_Skin();
+					$upgrader = new Plugin_Upgrader( $skin );
+					
+					// The 'install' method handles upgrades if the plugin is already installed.
+					$result = $upgrader->install( $download_url );
+			
+					if ( is_wp_error( $result ) ) {
+						wp_send_json_error( array( 'message' => $result->get_error_message() ) );
+					}
+			
+					if ( $result === null ) {
+						// This can happen if the upgrader doesn't think an update is needed
+						// or if there's an issue with the zip file not containing the plugin folder correctly.
+						wp_send_json_error( array( 'message' => 'A atualização falhou. O arquivo do plugin pode estar mal formatado ou a versão já está instalada.' ) );
+					}
+			
+					// Reactivate the plugin
+					$plugin_slug = 'woo-boleto-paghiper/woocommerce-paghiper.php';
+					$activation_result = activate_plugin( $plugin_slug );
+			
+					if ( is_wp_error( $activation_result ) ) {
+						wp_send_json_error( array( 'message' => 'Falha ao reativar o plugin após a atualização: ' . $activation_result->get_error_message() ) );
+					}
+			
+					wp_send_json_success( array( 'message' => 'Plugin atualizado com sucesso para a versão ' . esc_html( $version_to_install ) . '. A página será recarregada.' ) );
+				}}
 
 new WC_Paghiper_Admin();
