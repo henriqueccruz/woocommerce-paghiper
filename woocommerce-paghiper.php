@@ -528,10 +528,12 @@ class WC_Paghiper {
 		// Make sure we have our own dir at /wp-content/uploads so we can write our PDFs
 		$uploads = wp_upload_dir();
 		$upload_dir = $uploads['basedir'];
-		$paghiper_dir = $upload_dir . '/paghiper';
+		$paghiper_dir = $upload_dir . '/paghiper/billets';
 
-		if (!$wp_filesystem->is_dir($paghiper_dir)) {
-			$wp_filesystem->mkdir( $paghiper_dir );
+		if ( ! $wp_filesystem->is_dir( $paghiper_dir ) ) {
+			if ( ! wp_mkdir_p( $paghiper_dir ) ) {
+				error_log( 'WC PagHiper: Falha ao criar o diretório de uploads em ' . $paghiper_dir );
+			}
 		}
 	}
 
@@ -672,7 +674,7 @@ class WC_Paghiper {
 	
 					$uploads = wp_upload_dir();
 					$upload_dir = $uploads['basedir'];
-					$upload_dir = $upload_dir . '/paghiper';
+					$upload_dir = $upload_dir . '/paghiper/billets';
 	
 					$billet_pdf_file = $upload_dir.'/'.$transaction_id.'.pdf';
 	
@@ -912,7 +914,7 @@ class WC_Paghiper {
 		 */
 		$uploads = wp_upload_dir();
 		$upload_dir = $uploads['basedir'];
-		$upload_dir = $upload_dir . '/paghiper';
+		$upload_dir = $upload_dir . '/paghiper/billets';
 
 		global $wp_filesystem;
 		if (empty($wp_filesystem)) {
