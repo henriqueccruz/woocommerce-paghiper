@@ -8,7 +8,8 @@ import wordPressAssetPlugin from './plugins/wordpress-asset.js';
 const jsEntries = {
     'js/frontend.min':  './js/interface/frontend.js',
     'js/backend.min':   './js/interface/backend.js',
-    'js/admin.min':     './js/interface/admin.js'
+    'js/admin.min':     './js/interface/admin.js',
+    'js/notices.min':   './js/interface/notices.js'
 };
 
 const cssEntries = {
