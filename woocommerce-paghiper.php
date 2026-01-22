@@ -420,8 +420,8 @@ class WC_Paghiper {
 		];
 
 		foreach($notices as $version => $filename) {
-			if(in_array($prefix.$version, $pending_notices)) {
-				add_action( 'admin_notices', function() {
+			if(array_key_exists($prefix.$version, $pending_notices)) {
+				add_action( 'admin_notices', function() use ($filename) {
 					include_once $filename;
 				});
 			}
@@ -562,7 +562,7 @@ class WC_Paghiper {
 	/**
 	 * Plugin deactivate method.
 	 */
-	public static function deactivate() {
+	public function deactivate() {
 		flush_rewrite_rules();
 	}
 
