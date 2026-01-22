@@ -18,7 +18,8 @@ class WC_Paghiper_Migrator {
 	 * @var array
 	 */
 	protected $migrations = [
-		'1.2.0'	=> 'WC_Paghiper_Migration_1_2_0',
+		'1.1.0'	=> 'WC_Paghiper_Migration_1_1_0',
+		'1.2.0'	=> 'WC_Paghiper_Migration_1_2_0'
 	];
 
 	/**
@@ -54,6 +55,7 @@ class WC_Paghiper_Migrator {
 		foreach ( $this->migrations as $version => $class_name ) {
 			// Only run migrations that are newer than the current DB version
 			if ( version_compare( $version, $current_db_version, '>' ) ) {
+
 				$success = $this->run_migration( $version, $class_name );
 				
 				// If a step fails, we stop to prevent inconsistent state
