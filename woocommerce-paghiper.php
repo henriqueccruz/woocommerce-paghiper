@@ -65,6 +65,9 @@ class WC_Paghiper {
 				$this->admin_includes();
 			}
 
+			// Initialize Migrator
+			new WC_Paghiper_Migrator();
+
 			add_filter( 'woocommerce_payment_gateways', array( $this, 'add_gateway' ) );
 			add_action( 'init', array( $this, 'add_paghiper_endpoint' ) );
 			add_action( 'init', array( $this, 'init_shortcode' ) );
@@ -171,6 +174,9 @@ class WC_Paghiper {
 		include_once 'includes/wc-paghiper-notification.php';
 		include_once 'includes/class-wc-paghiper-billet-gateway.php';
 		include_once 'includes/class-wc-paghiper-pix-gateway.php';
+
+		require_once 'includes/migrations/interface-wc-paghiper-migration.php';
+		require_once 'includes/class-wc-paghiper-migrator.php';
 
 		if(class_exists('AutomateWoo\Variable')) {
 			include_once 'includes/integrations/automate-woo.php';
