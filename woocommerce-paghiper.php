@@ -389,20 +389,45 @@ class WC_Paghiper {
 	 */
 	public static function print_notices() {
 
-		$is_updated = get_transient( 'woo_paghiper_notice_2_1' );
+		// Query current notices
+		global $wpdb;
 
-		if($is_updated) {
+		// Define your specific prefix
+		$prefix = 'woo_paghiper_notice_';
 
-			// Print notices
-			add_action( 'admin_notices', function() {
-				echo sprintf(
-					'<div class="error notice paghiper-dismiss-notice is-dismissible" data-notice-id="notice_2_1"><p><strong>%s: </strong>%s <a href="%s">%s</a></p></div>', 
-					esc_html__('PIX PagHiper', 'woo-boleto-paghiper'), 
-					esc_html__('Você ja pode receber pagamentos por PIX! Configure aqui:', 'woo-boleto-paghiper'), 
-					esc_url(admin_url('admin.php?page=wc-settings&tab=checkout&section=wc_paghiper_pix_gateway')), 
-					esc_html__('Configurações do PIX PagHiper', 'woo-boleto-paghiper'));
-			});
+		// Prepare the query to find all matches in the options table
+		// We look for '_transient_' + our custom prefix
+		$results = $wpdb->get_results( 
+			$wpdb->prepare(
+				"SELECT option_name, option_value FROM {$wpdb->options} WHERE option_name LIKE %s",
+				'_transient_' . $wpdb->esc_like( $prefix ) . '%'
+			) 
+		);
+
+		$pending_notices = [];
+		foreach ( $results as $row ) {
+			// Strip the WordPress internal prefix to get the clean transient key
+			$transient_key = str_replace( '_transient_', '', $row->option_name );
 			
+			// Use the native function to handle expiration checks and unserialization
+			$value = get_transient( $transient_key );
+			
+			if ( false !== $value ) {
+				$pending_notices[$transient_key] = $value;
+			}
+		}
+
+		$notices = [
+			'2_1'	=> 'includes/views/notices/plugin-updates/2.1.php',
+			'3_0' 	=> 'includes/views/notices/plugin-updates/3.0.php',
+		];
+
+		foreach($notices as $version => $filename) {
+			if(in_array($prefix.$version, $pending_notices)) {
+				add_action( 'admin_notices', function() {
+					include_once $filename;
+				});
+			}
 		}
 
 		add_action( 'admin_notices', function() {
