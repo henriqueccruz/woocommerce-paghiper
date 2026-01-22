@@ -41,12 +41,12 @@ $base_path = $upload_dir['basedir'] . '/paghiper/gif-timers';
 $bundle_index = floor( $remaining_seconds / 3600 );
 
 // The filenames are countdown_{total_seconds}.gif.
-$filename = 'countdown_' . $remaining_seconds . '.gif';
+$filename = 'countdown_' . round($remaining_seconds, -1) . '.gif';
 
 // If the time has expired, point to the zero-second GIF.
 if ($remaining_seconds <= 0) {
     $bundle_index = 0;
-    $filename = 'countdown_0.gif';
+    $filename = 'countdown_0_expired.gif';
 }
 
 // Check for a _plus suffix file for compatibility with older logic.
