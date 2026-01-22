@@ -1,167 +1,85 @@
 <?php
-header('Content-Type: image/gif');
-header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+/**
+ * PagHiper Countdown Secure Proxy
+ *
+ * This script serves a pre-generated static GIF based on a timestamp.
+ * It reads the file from the filesystem and outputs its content directly
+ * to ensure compatibility with email clients that block redirects.
+ */
 
-// Configurações
-$frame_rate = 1; // FPS (frames por segundo)
-$tolerance = 10; // Tolerância de 10 segundos para cache
-$max_time_in_seconds = 1200; // 20 minutos
-
-// Obtém o timestamp da URL
-if (!isset($_GET['order_due_time']) || !is_numeric($_GET['order_due_time'])) {
-    die('Invalid timestamp');
+// --- 1. Bootstrap WordPress to get its functions ---
+$wp_load_path = __DIR__ . '/../../../../../../wp-load.php';
+if ( file_exists( $wp_load_path ) ) {
+    require_once $wp_load_path;
+} else {
+    header("HTTP/1.1 500 Internal Server Error");
+    error_log('PagHiper Countdown: Could not find wp-load.php. Please check the path.');
+    // Serve a 1x1 transparent GIF as a fallback
+    header('Content-Type: image/gif');
+    echo base64_decode('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7');
+    exit;
 }
+
+// --- 2. Validate Input ---
+if ( ! isset( $_GET['order_due_time'] ) || ! is_numeric( $_GET['order_due_time'] ) ) {
+    header("HTTP/1.1 400 Bad Request");
+    // Serve a 1x1 transparent GIF as a fallback
+    header('Content-Type: image/gif');
+    echo base64_decode('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7');
+    exit;
+}
+
 $timestamp = (int) $_GET['order_due_time'];
 $current_time = time();
-$remaining_time = $timestamp - $current_time;
+$remaining_seconds = max(0, $timestamp - $current_time);
 
-// Se já expirou, ou se está nos últimos segundos, ativa o loop de "Expirado"
-$expired = ($remaining_time <= 0);
-$remaining_time = max($remaining_time, 0);
+// --- 3. Determine the correct GIF file path (filesystem path) ---
+$upload_dir = wp_upload_dir();
+$base_path = $upload_dir['basedir'] . '/paghiper/gif-timers';
 
-// --- Verificação de Ferramentas ---
-$use_gifsicle = function_exists('shell_exec') && !empty(shell_exec('which gifsicle'));
+// The downloaded assets are organized into folders 0-23, representing hours.
+$bundle_index = floor( $remaining_seconds / 3600 );
 
-// --- Lógica de Tempo & Loop ---
-$is_expired = ($seconds_to_generate <= 0);
-$is_longer_than_max = ($remaining_time > $max_time_in_seconds);
+// The filenames are countdown_{total_seconds}.gif.
+$filename = 'countdown_' . $remaining_seconds . '.gif';
 
-// Ajusta para o múltiplo mais próximo da tolerância
-$remaining_time = floor($remaining_time / $tolerance) * $tolerance;
-$suffix = '';
-if ($is_longer_than_max) {
-    $suffix = '_plus';
-} elseif ($expired) {
-    $suffix = '_expired';
-}
-$cache_file = "cache/countdown_{$remaining_time}{$suffix}.gif";
-
-// Serve o GIF do cache se existir
-if (file_exists($cache_file)) {
-    echo file_get_contents($cache_file);
-    exit;
+// If the time has expired, point to the zero-second GIF.
+if ($remaining_seconds <= 0) {
+    $bundle_index = 0;
+    $filename = 'countdown_0.gif';
 }
 
-// Criar o GIF dinamicamente
-$alternating_frames_at_end = 5; // Número de frames alternados no final
-
-$width = 600;
-$height = 200;
-$frames = !$expired ? $remaining_time + $alternating_frames_at_end : 1;
-$delay = 100; // 1 segundo por frame (100 = 1s no GIF)
-
-$imagick = new Imagick();
-$imagick->setFormat('gif');
-
-for ($i = 0; $i <= $frames; $i++) {
-    $frame = new Imagick();
-
-    $frame->newImage($width, $height, new ImagickPixel('white'));
-    $frame->setImageFormat('gif');
-    $frame->setImageDispose(Imagick::DISPOSE_BACKGROUND);
-    $draw = new ImagickDraw();
-    $frame->setImageIterations(1);
-
-    if (!$expired && $i < $frames - ($alternating_frames_at_end)) {
-        // Contagem regressiva normal
-        $text = gmdate('H:i:s', max(0, $remaining_time - $i));
-
-        // Labels
-        $draw->setFont('../fonts/AtkinsonHyperlegible-Bold.ttf');
-        $draw->setFontSize(20);
-        $draw->setFontWeight(700);
-        $draw->annotation(80, 150, "HORAS");
-        $draw->annotation(255, 150, "MINUTOS");
-        $draw->annotation(440, 150, "SEGUNDOS");
-
-        // Texto centralizado
-        $draw->setFillColor('black');
-        $draw->setFont('../fonts/AtkinsonHyperlegibleMono-VariableFont_wght.ttf');
-        $draw->setFontSize(100);
-        $draw->setFontWeight(300);
-        $draw->annotation(50, 120, $text);
-
-        $frame->drawImage($draw);
-        $frame->setImageDelay($delay);
-        
-        $imagick->addImage($frame);
-
-    } else {
-        // Alternância entre "Expirado" e frame vazio nos últimos dois frames
-        
-        if($expired) {
-            $frame->setImageIterations(0);
-        }
-        // Alternância entre "Expirado" e frame vazio nos últimos dois frames
-        $text = ($i % 2 == 0) ? '' : 'Expirado';
-
-        // Cronometro vazio
-        if($i % 2 == 0) {
-
-            $text = gmdate('H:i:s', max(0, $remaining_time - $i));
-
-            // Labels
-            $draw->setFont('../fonts/AtkinsonHyperlegible-Bold.ttf');
-            $draw->setFontSize(20);
-            $draw->setFontWeight(700);
-            $draw->annotation(80, 150, "HORAS");
-            $draw->annotation(255, 150, "MINUTOS");
-            $draw->annotation(440, 150, "SEGUNDOS");
-
-            // Texto centralizado
-            $draw->setFillColor('black');
-            $draw->setFont('../fonts/AtkinsonHyperlegibleMono-VariableFont_wght.ttf');
-            $draw->setFontSize(100);
-            $draw->setFontWeight(300);
-            $draw->annotation(50, 120, $text);
-
-            $frame->drawImage($draw);
-            $frame->setImageDelay($delay);
-            
-            $imagick->addImage($frame);
-
-        // Texto "Expirado"
-        } else {
-
-            // Texto centralizado
-            $draw->setFillColor('black');
-            $draw->setFont('../fonts/AtkinsonHyperlegibleMono-VariableFont_wght.ttf');
-            $draw->setFontSize(80);
-            $draw->setFontWeight(600);
-            $draw->setTextKerning(-5);
-            $draw->annotation(120, 125, 'Expirado');
-
-            $frame->drawImage($draw);
-            $frame->setImageDelay($delay);
-            
-            $imagick->addImage($frame);
-
-        }
-    }
+// Check for a _plus suffix file for compatibility with older logic.
+$plus_filename = 'countdown_' . $remaining_seconds . '_plus.gif';
+if(file_exists($base_path . '/' . $bundle_index . '/' . $plus_filename)) {
+    $filename = $plus_filename;
 }
 
-    if ($use_gifsicle) {
-        $temp_file = $cache_file . '.tmp';
-        $imagick->writeImages($temp_file, true);
-        shell_exec("gifsicle -O3 --lossy=80 -o \"$cache_file\" \"$temp_file\" --no-conserve-memory");
-        unlink($temp_file);
-        $imagick->destroy();
+$file_path = $base_path . '/' . $bundle_index . '/' . $filename;
 
-    } else {
-        $imagick->optimizeImageLayers();
-        $imagick->quantizeImage(16, Imagick::COLORSPACE_RGB, 0, false, false);
-        $imagick->setImageCompressionQuality(60);
-        $imagick->writeImages($cache_file, true);
-    }
-
-
-
-// Serve o GIF gerado se existir
-if (file_exists($cache_file)) {
-    echo file_get_contents($cache_file);
+// --- 4. Serve the file or a fallback ---
+if ( file_exists( $file_path ) ) {
+    header('Content-Type: image/gif');
+    header('Content-Length: ' . filesize( $file_path ));
+    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+    header('Pragma: no-cache');
+    header('Expires: 0');
+    readfile( $file_path );
     exit;
 } else {
-    error_log("Erro ao gerar o GIF de contagem regressiva. URL: " . $_SERVER['REQUEST_URI']);
-}
+    // Log the missing file for debugging purposes
+    $log_message = sprintf(
+        'PagHiper Countdown: GIF file not found. Requested timestamp: %s, Calculated path: %s',
+        isset($_GET['order_due_time']) ? $_GET['order_due_time'] : 'not_set',
+        $file_path
+    );
+    error_log($log_message);
 
-exit;
+    // Serve a 1x1 transparent GIF if the specific countdown file is not found.
+    header('Content-Type: image/gif');
+    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+    header('Pragma: no-cache');
+    header('Expires: 0');
+    echo base64_decode('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7');
+    exit;
+}

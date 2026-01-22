@@ -236,14 +236,13 @@ class WC_Paghiper_Admin {
 			}
 		
 			$upload_dir = wp_upload_dir();
-			$timers_dir = $upload_dir['basedir'] . '/paghiper-timers';
+			$timers_dir = $upload_dir['basedir'] . '/paghiper/gif-timers';
 		
-			if ( ! $wp_filesystem->exists( $timers_dir ) ) {
-				if ( ! $wp_filesystem->mkdir( $timers_dir, FS_CHMOD_DIR ) ) {
-					return new WP_Error('dir_creation_failed', 'Não foi possível criar o diretório para os cronômetros.');
-				}
-			}
-		
+					if ( ! $wp_filesystem->exists( $timers_dir ) ) {
+						if ( ! wp_mkdir_p( $timers_dir ) ) {
+							return new WP_Error('dir_creation_failed', 'Não foi possível criar o diretório para os cronômetros.');
+						}
+					}		
 			return $timers_dir;
 		}
 
@@ -268,14 +267,13 @@ class WC_Paghiper_Admin {
 			// Os pacotes são de 1 a 24, mas os diretórios serão de 0 a 23
 			$destination_dir = $timers_dir . '/' . ( $bundle_number - 1 );
 
-			// Garante que o diretório de destino específico do pacote exista
-			global $wp_filesystem;
-			if ( ! $wp_filesystem->exists( $destination_dir ) ) {
-				if ( ! $wp_filesystem->mkdir( $destination_dir, FS_CHMOD_DIR ) ) {
-					wp_send_json_error( array( 'message' => 'Falha ao criar o sub-diretório para o pacote ' . $bundle_number . '. Verifique as permissões de escrita.' ) );
-				}
-			}
-		
+					// Garante que o diretório de destino específico do pacote exista
+					global $wp_filesystem;
+					if ( ! $wp_filesystem->exists( $destination_dir ) ) {
+						if ( ! wp_mkdir_p( $destination_dir ) ) {
+							wp_send_json_error( array( 'message' => 'Falha ao criar o sub-diretório para o pacote ' . $bundle_number . '. Verifique as permissões de escrita.' ) );
+						}
+					}		
 			// URL do pacote
 			$package_url = 'https://paghiper.henriquecruz.com.br/chrono-gif-pack/' . $bundle_number . '.zip';
 		

@@ -35,7 +35,7 @@ $remaining_seconds = max(0, $timestamp - $current_time);
 
 // --- 3. Determine the correct GIF file path (filesystem path) ---
 $upload_dir = wp_upload_dir();
-$base_path = $upload_dir['basedir'] . '/paghiper-timers/';
+$base_path = $upload_dir['basedir'] . '/paghiper/gif-timers';
 
 // The downloaded assets are organized into folders 0-23, representing hours.
 $bundle_index = floor( $remaining_seconds / 3600 );
@@ -51,11 +51,11 @@ if ($remaining_seconds <= 0) {
 
 // Check for a _plus suffix file for compatibility with older logic.
 $plus_filename = 'countdown_' . $remaining_seconds . '_plus.gif';
-if(file_exists($base_path . $bundle_index . '/' . $plus_filename)) {
+if(file_exists($base_path . '/' . $bundle_index . '/' . $plus_filename)) {
     $filename = $plus_filename;
 }
 
-$file_path = $base_path . $bundle_index . '/' . $filename;
+$file_path = $base_path . '/' . $bundle_index . '/' . $filename;
 
 // --- 4. Serve the file or a fallback ---
 if ( file_exists( $file_path ) ) {
