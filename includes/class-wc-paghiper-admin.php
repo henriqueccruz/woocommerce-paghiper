@@ -70,16 +70,20 @@ class WC_Paghiper_Admin {
 	            'wc-paghiper-admin', 
 	            wc_paghiper_assets_url( '/js/admin.min.js' ), ['jquery'], '1.0.0', true );
 	
+	        wp_register_script( 
+	            'wc-paghiper-notices', 
+	            wc_paghiper_assets_url( '/js/notices.min.js' ), ['jquery'], '1.0.0', true );
+	
 	        if(is_admin()) {
 	            if(is_array($_GET) && array_key_exists('page', $_GET) && array_key_exists('section', $_GET)) {
 	
-	                if($_GET['page'] === 'wc-settings' && in_array($_GET['section'], ['paghiper_billet', 'paghiper_pix'])) {
+	                if($_GET['page'] === 'wc-settings' && in_array($_GET['section'], ['paghiper_billet', 'wc_paghiper_billet_gateway', 'paghiper_pix', 'wc_paghiper_pix_gateway'])) {
 	                    
 	                    $gateway_id = sanitize_text_field($_GET['section']);
 	                    $settings_key = "woocommerce_{$gateway_id}_settings";
 	                    $gateway_settings = get_option($settings_key);
 	
-	                    $is_pix = ($gateway_id === 'paghiper_pix');
+	                    $is_pix = in_array($gateway_id, ['paghiper_pix', 'wc_paghiper_pix_gateway']);
 	                    $default_mode = $is_pix ? 'minutes' : 'days';
 	                    $default_value = $is_pix ? 30 : 3;
 	
@@ -105,6 +109,10 @@ class WC_Paghiper_Admin {
 	                }
 	
 	            }
+				
+	            wp_localize_script('wc-paghiper-notices', 'notice_params', ['ajaxurl' => get_admin_url() . 'admin-ajax.php']);
+				wp_enqueue_script( 'wc-paghiper-notices' );
+
 	        }
 	    }
 	
