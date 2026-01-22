@@ -1,20 +1,22 @@
-== Changelog ==
+#### 2.5.3
 
-## 2.5.2
+- Bugfix: ArgumentCountError woocommerce-paghiper:399
 
-- Bufgix: Multiplas notificações de novo pedido enviadas
+#### 2.5.2
 
-## 2.5.1
+- Bugfix: Multiplas notificações de novo pedido enviadas
 
-- Bufgix: Múltiplos PIXes gerados ao criar pedido
+#### 2.5.1
 
-## 2.5
+- Bugfix: Múltiplos PIXes gerados ao criar pedido
+
+#### 2.5
 
 - Mudança sutil no nome do plugin por questões de compliance
 - Erro fatal no admin dos pedidos, a depender de algumas condições
 - Múltiplos bugfixes e melhorias
 
-## 2.4.3
+#### 2.4.3
 
 - Melhoria: Otimizações e refatoração de código em diversas rotas e jornadas
 - Melhoria: Mais informações de log
@@ -23,17 +25,17 @@
 - Fix: Metabox não aparece para pedidos com HPOS ativado em algumas circunstâncias
 - FIx: Erros ocasionais nas áreas de admin, a depender da combinação de plug-ins utilizada
 
-## 2.4.2
+#### 2.4.2
 
 - Compliance: Remove update_meta_data return checks.
 - Fix: Não foi possível gerar um ID único para a requisição.
 - Fix: ErrorException on class-wc-paghiper-base-gateway.php:375
 
-## 2.4.1
+#### 2.4.1
 
 - Fix: TypeError: class-wc-paghiper-base-gateway.php:375
 
-## 2.4.0
+#### 2.4.0
 
 - Suporte ao sistema de block checkout
 - Melhor checagem de erros na emissão de transações
@@ -45,41 +47,41 @@
 - Fix: Baixa duplicada de pagamentos
 - Melhorias bigfixes diversos
 
-## 2.3.3
+#### 2.3.3
 
 - Suporte a HPOS
 - Maior estabilidade na operação
 - Erro fatal ao instalar plug-in em alguns ambientes
 - Remoção de múltiplos warnings e erros
 
-## 2.3.2
+#### 2.3.2
 
 - Bugfix: Using $this out of context ao processar notificações IPN
 - Bugfix: Alguns casos ainda podiam falhar na comparação de data entre pedido e transação ao determinar data de vencimento
 - Bugfix: Mais assertividade ao lidar com resposta ao prompt de avaliação do plug-in
 
-## 2.3.1
+#### 2.3.1
 
 - Melhoria: Mais clareza e mais informações nos logs
 - Bugfix: Duplicação de transações em alguns casos (timezone)
 - Bugfix: Nome de transação (PIX/boleto) incorretos no painel ou nas telas de erro
 
-## 2.3
+#### 2.3
 
 - Melhoria: Suporte a emissão de PIX/boleto para pedidos com status malsucedido (failed)
 - Bugfix: Múltiplas transações geradas para o mesmo pedido
 - Bugfix: Conversão implícita de float para int
 - BUgfix: URL de notificação IPN dinâmica
 
-## 2.2.2
+#### 2.2.2
 
 - Bugfix: A depender do checkout da loja, telefone do cliente poderia ser ignorado ao criar uma nova transação (PIX ou boleto)
 
-## 2.2.1
+#### 2.2.1
 
 - Bugfix: Botão de copiar código PIX não copia em alguns casos
 
-## 2.2.0
+#### 2.2.0
 
 - Melhoria: Compatibilidade total com PHP8
 - Melhoria: Segunda via de PIX e boleto no painel de pedido
@@ -98,7 +100,7 @@
 - Bugfix: Operadores de finais de semana não atuam mais em transações PIX
 - Bugfix: Erro 500 no painel ao atualizar data de vencimento
 
-## 2.1.5
+#### 2.1.5
 
 - Melhoria: Mais informações nos logs
 - Melhoria: Lógica de re-emissão aprimorada
@@ -108,7 +110,7 @@
 - Bugfix: Controle mais estrito do estoque
 - Bugfix: Instruções de pagamento eram mostrados várias vezes, dependendo das condições
 
-## 2.1.4 - 2021/02/14
+#### 2.1.4 - 2021/02/14
 
 - Bugfix: Pedido falhava na validação caso o status fosse "Aguardando pagamento"
 - Bugfix: Erro ao enviar e-mails de estoque baixo
@@ -116,11 +118,11 @@
 - Melhoria: Evita conflitos com outros plugins usando versões diferentes do GuzzleHttp
 - Melhoria: Mais segurança no processamento da transação no checkout
 
-## 2.1.3
+#### 2.1.3
 
 - Bugfix: Erro ao editar produtos ou outros Custom post types do Woocommece
 
-## 2.1.2
+#### 2.1.2
 
 - Melhoria: Aviso de limite padrão comercial para transações acima de R$ 9.000
 - Melhoria: Compatibilidade com plug-ins de multi-step checkout (ou lojas sem AJAX no checkout)
@@ -133,11 +135,11 @@
 - Bugfix: Mais segurança na atualização dos pedidos
 - Bugfix: Link incorreto para pedidos era formado, caso bloco de boleto fosse acessado da área "meus pedidos"
 
-## 2.1.1
+#### 2.1.1
 
 - Bugfix: Credenciais não estavam sendo trazidas da versão anterior
 
-## 2.1.0
+#### 2.1.0
 
 - Nova funcionalidade: Receba seus pedidos usando pagamento por PIX
 - Melhoria: Campo próprio de CPF/CNPJ (Não é mais necessário uso do Brazilian Market on WooCommerce) e validação
@@ -149,13 +151,13 @@
 - Bugfix: Mensagem incorreta nas notas de pedido, ao confirmar pagamento
 - Bugfix: Gateways ainda ficavam disponíveis, mesmo para pedidos abaixo do valor mínimo, causando tela branca no checkout
 
-## 2.0.5
+#### 2.0.5
 
 - Bugfix: Melhor tratativa de descontos (quando há um item com valor negativo no carrinho)
 - Bugfix: Warning removido do painel (Warning: count(): Parameter must be an array or an object that implements Countable...)
 - Melhoria: Melhor descrição das notificações IPN no log de pedido
 
-## 2.0.4
+#### 2.0.4
 
 - Melhoria: Uso opcional do plug-in Brazilian Market on WooCommerce (antigo WooCommerce Extra Checkout Fields for Brazil)
 - Melhoria: UX e acessibilidade na página de finalização de pedido
@@ -166,15 +168,15 @@
 - Bugfix: Conciliação de estoque (no cancelamento de pedidos)
 - Bugfix: Corrige alguns potenciais problemas relacionados a criação de log (dependendo da versão do Woocommerce)
 
-## 2.0.3
+#### 2.0.3
 
 - Bugfix: Erro "payer_name invalido" ao finalizar pedido
 
-## 2.0.2
+#### 2.0.2
 
 - Validação de ApiKey e avisos no back-end do Wordpress
 
-## 2.0.1
+#### 2.0.1
 
 - Lógica de emissão de boleto re-escrita totalmente do zero
 - Automação de pedido (boleto emitido automaticamente ao criar o pedido)
