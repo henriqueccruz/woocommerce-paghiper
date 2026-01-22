@@ -50,11 +50,7 @@ class WC_Paghiper_Migration_1_2_0 implements WC_Paghiper_Migration_Interface {
 			}
 		}
 
-
-
-		if($is_migrated) {
-			set_transient( 'woo_paghiper_notice_3_0', true, (5 * 24 * 60 * 60) );
-		}
+		set_transient( 'woo_paghiper_notice_3_0', true, (5 * 24 * 60 * 60) );
 
 	}
 }
