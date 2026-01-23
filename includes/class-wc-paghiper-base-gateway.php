@@ -1089,7 +1089,7 @@ class WC_Paghiper_Base_Gateway {
 	}
 
 	private function get_github_version_status() {
-		$transient_key = 'paghiper_github_releases';
+		/*$transient_key = 'paghiper_github_releases';
 		$releases = get_transient( $transient_key );
 
 		if ( false === $releases ) {
@@ -1133,7 +1133,7 @@ class WC_Paghiper_Base_Gateway {
 
 		if ( null !== $latest_prerelease && version_compare( $latest_prerelease, $current_version, '>' ) ) {
 			return array( 'action' => 'install_beta', 'version' => $latest_prerelease );
-		}
+		}*/
 
 		return array( 'action' => 'none' );
 	}
