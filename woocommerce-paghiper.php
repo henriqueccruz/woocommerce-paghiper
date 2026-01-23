@@ -908,7 +908,7 @@ class WC_Paghiper {
 		 * 
 		 * @return string
 		 */
-		if (version_compare(PHP_VERSION, '5.6.0', '<')) {
+		if (version_compare(PHP_VERSION, '7.2', '<')) {
 			include_once 'includes/views/notices/html-notice-min-php-version.php';
 		}
 
