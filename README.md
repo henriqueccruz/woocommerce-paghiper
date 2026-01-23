@@ -6,11 +6,11 @@ O plug-in anexa o boleto, mostra código de barras e linha digitável nos e-mail
 
 Fácil, prático e rápido!
 
-* **Versão mais Recente:** 2.5.2
+* **Versão mais Recente:** 3.0
 * **Requer WooCommerce** versão mínima 4.0.0
 * **Requer Wordpress** preferencialmente atualizado
 * **Requisitos:** PHP >= 7.2, cURL ativado.
-* **Compatibilidade:** Wordpress 6.8.1, Woocommerce 10.0.2, PHP 8.4.10.
+* **Compatibilidade:** Wordpress 6.9, Woocommerce 10.4.3, PHP 8.5.2.
 
 
 # Como Instalar
@@ -39,17 +39,26 @@ Para dúvidas comerciais e/ou sobre o funcionamento do serviço, visite a nossa 
 
 # Changelog
 
-## 2.5.2
+## 3.0
+### Adições
+* Nova experiência de checkout
+* PIX com vencimentos menores que 1 dia (minutos, horas, etc)
+* Confirmação de pagamento instantânea no checkout
 
-- Bufgix: Multiplas notificações de novo pedido enviadas
+### Melhorias
+* Checagem de credenciais direto pelo admin
+* Nova experiencia de UX/UI do painel de edição de pedidos
 
-## 2.5.1
+### Modificações
+* Nova estrutura de pastas dentro de wp-content/uploads
 
-- Bufgix: Múltiplos PIXes gerados ao criar pedido
+## 2.5.3
+
+- Bugfix: ArgumentCountError woocommerce-paghiper:399
 
 # Licença
 
-Copyright 2016-2025 Serviços Online BR.
+Copyright 2016-2026 Serviços Online BR.
 
 Licensed under the 3-Clause BSD License (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at
 

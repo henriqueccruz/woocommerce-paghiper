@@ -6,13 +6,13 @@
  * Author: 					PagHiper Pagamentos
  * Author URI: 				https://www.paghiper.com
  * Version: 				3.0
- * Tested up to: 			6.8
+ * Tested up to: 			6.9
  * License:              	GPLv3
  * License URI:          	http://www.gnu.org/licenses/gpl-3.0.html
  * Text Domain: 			woo-boleto-paghiper
  * Domain Path: 			/languages/
  * WC requires at least: 	4.0.0
- * WC tested up to: 		10.0.2
+ * WC tested up to: 		10.4.3
  * Requires Plugins: 		woocommerce
  * Requires PHP:			7.2
  */	
@@ -835,12 +835,12 @@ class WC_Paghiper {
 	public function print_requirement_notices() {
 
 		/**
-		 * Woocommerce missing notice.
+		 * Woocommerce missing or outdated notice.
 		 * 
 		 * @return string
 		 */
 
-		if ( !class_exists( 'WC_Payment_Gateway' ) ) {
+		if ( !class_exists( 'WC_Payment_Gateway' ) || ( defined('WC_VERSION') && version_compare( WC_VERSION, '4.0.0', '<' ) ) ) {
 			include_once 'includes/views/notices/html-notice-woocommerce-missing.php';
 		}
 
