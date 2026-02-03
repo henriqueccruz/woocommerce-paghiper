@@ -37,7 +37,7 @@ class WC_PagHiper_Transaction {
 		$this->order_id = $order_id;
 
 		// Pegamos o pedido completo
-		$this->order = wc_get_order( $order_id );
+		$this->order = new WC_Order( $order_id );
 		$this->order_status = (strpos($this->order->get_status(), 'wc-') === false) ? 'wc-'.$this->order->get_status() : $this->order->get_status();
 
 		// Pega a configuração atual do plug-in.
@@ -95,7 +95,11 @@ class WC_PagHiper_Transaction {
 		}
 
 		// Define data de vencimento, caso exista
-		if( !array_key_exists('current_transaction_due_date', $this->order_data) ||  !array_key_exists('order_transaction_due_date', $this->order_data)) {
+		$order_due_date_key = ($this->gateway_id === 'paghiper_pix' && isset($this->gateway_settings['due_date_mode']) && $this->gateway_settings['due_date_mode'] === 'minutes')
+			? 'order_transaction_due_datetime'
+			: 'order_transaction_due_date';
+
+		if (!array_key_exists('current_transaction_due_date', $this->order_data) || !array_key_exists($order_due_date_key, $this->order_data)) {
 
 			$new_request = TRUE;
 
@@ -123,75 +127,105 @@ class WC_PagHiper_Transaction {
 			}
 
 		} else {
+
+			$today_date = new DateTime('now', $this->timezone);
 			
 			// Checamos se o total do pedido bate com o total da transação Paghiper
 			$different_total = ( $this->order->get_total() == $this->order_data['value_cents'] ? NULL : TRUE );
 
 			// Checamos se a data de vencimento é válida
-			$original_due_date = DateTime::createFromFormat('Y-m-d', $this->order_data['order_transaction_due_date'], $this->timezone);
-			$current_transaction_due_date = DateTime::createFromFormat('Y-m-d', $this->order_data['current_transaction_due_date'], $this->timezone);
-			$different_due_date = ( $this->order_data['order_transaction_due_date'] == $this->order_data['current_transaction_due_date'] ? NULL : TRUE );
-
-			// Armazenamos a quantidade de dias passados do vencimento para uso interno
-			$today_date = new DateTime;
-			$today_date->setTimezone($this->timezone);
-			$this->past_due_days = ($original_due_date && $current_transaction_due_date) ? (int) $today_date->diff($original_due_date)->format("%r%a") : NULL ;
+			if ($this->gateway_id === 'paghiper_pix' && isset($this->gateway_settings['due_date_mode']) && $this->gateway_settings['due_date_mode'] === 'minutes') {
+				$original_due_date = new DateTime($this->order_data['order_transaction_due_datetime'], $this->timezone);
+				$different_due_date = ($today_date > $original_due_date) ? TRUE : FALSE ;
+			} else {
+				$original_due_date = DateTime::createFromFormat('Y-m-d', $this->order_data['order_transaction_due_date'], $this->timezone);
+				$current_transaction_due_date = DateTime::createFromFormat('Y-m-d', $this->order_data['current_transaction_due_date'], $this->timezone);
+				$different_due_date = ( $this->order_data['order_transaction_due_date'] == $this->order_data['current_transaction_due_date'] ? NULL : TRUE );
+			}
 
 			if($different_due_date) {
 
-				// Check if date is different
-				$due_date_weekday = $current_transaction_due_date->format('N');
+				if (!array_key_exists('order_transaction_due_datetime', $this->order_data)) {
 
-				if ($current_transaction_due_date->format('N') == 1 && $original_due_date->format('N') > 5) {
-					
-					$paghiper_data = $this->order->get_meta( 'wc_paghiper_data' ) ;
-					$paghiper_data['order_transaction_due_date'] = $current_transaction_due_date->format( 'Y-m-d' );
+					// Armazenamos a quantidade de dias passados do vencimento para uso interno
+					$this->past_due_days = ($original_due_date && $current_transaction_due_date) ? (int) $today_date->diff($original_due_date)->format("%r%a") : NULL ;
 
-					$this->order->update_meta_data( 'wc_paghiper_data', $paghiper_data );
-					$this->order->save();
-
-					if(function_exists('update_meta_cache'))
-						update_meta_cache( 'shop_order', $this->order_id );
-
-					$this->order_data = $paghiper_data;
-					/* translators: %s: Mewly defined transaction due date. Used in order notes */
-					$this->order->add_order_note( sprintf( __( 'Data de vencimento ajustada para %s', 'woo-boleto-paghiper' ), $current_transaction_due_date->format('d/m/Y') ) );
-
-					$log_message = 'Pedido #%s: Data de vencimento do boleto não bate com a informada no pedido. Cheque a opção "Vencimento em finais de semana" no <a href="https://www.paghiper.com/painel/prazo-vencimento-boleto/" target="_blank">Painel da PagHiper</a>.';
-					wc_paghiper_add_log(
-						$this->log,
-						sprintf( $log_message, $this->order_id ),
-						['metadata' => $this->order_data]
-					);
+					// Check if date is different
+					$due_date_weekday = $current_transaction_due_date->format('N');
 
 
-					$error = __( '<strong>Boleto PagHiper</strong>: 
-					A data de vencimento do boleto foi configurada para um final de semana mas o boleto foi emitido para segunda-feira. 
-					Cheque a opção "Vencimento em finais de semana" no <a href="https://www.paghiper.com/painel/prazo-vencimento-boleto/" target="_blank">Painel da PagHiper</a> ou 
-					ative nas configurações do plugin a correção de datas para que o vencimento não caia em finais de semana', 'woo-boleto-paghiper' );
-					set_transient("woo_paghiper_due_date_order_errors_{$this->order_id}", $error, 0);
+					if ($current_transaction_due_date->format('N') == 1 && $original_due_date->format('N') > 5) {
+						
+						$paghiper_data = $this->order->get_meta( 'wc_paghiper_data' ) ;
+						$paghiper_data['order_transaction_due_date'] = $current_transaction_due_date->format( 'Y-m-d' );
 
-					$different_due_date = NULL;
+						$this->order->update_meta_data( 'wc_paghiper_data', $paghiper_data );
+						$this->order->save();
+
+						if(function_exists('update_meta_cache'))
+							update_meta_cache( 'shop_order', $this->order_id );
+
+						$this->order_data = $paghiper_data;
+						/* translators: %s: Mewly defined transaction due date. Used in order notes */
+						$this->order->add_order_note( sprintf( __( 'Data de vencimento ajustada para %s', 'woo-boleto-paghiper' ), $current_transaction_due_date->format('d/m/Y') ) );
+
+						$log_message = 'Pedido #%s: Data de vencimento do boleto não bate com a informada no pedido. Cheque a opção "Vencimento em finais de semana" no <a href="https://www.paghiper.com/painel/prazo-vencimento-boleto/" target="_blank">Painel da PagHiper</a>.';
+						wc_paghiper_add_log(
+							$this->log,
+							sprintf( $log_message, $this->order_id ),
+							['metadata' => $this->order_data]
+						);
+
+
+						$error = __( '<strong>Boleto PagHiper</strong>: 
+						A data de vencimento do boleto foi configurada para um final de semana mas o boleto foi emitido para segunda-feira. 
+						Cheque a opção "Vencimento em finais de semana" no <a href="https://www.paghiper.com/painel/prazo-vencimento-boleto/" target="_blank">Painel da PagHiper</a> ou 
+						ative nas configurações do plugin a correção de datas para que o vencimento não caia em finais de semana', 'woo-boleto-paghiper' );
+						set_transient("woo_paghiper_due_date_order_errors_{$this->order_id}", $error, 0);
+
+						$different_due_date = NULL;
+
+					} else {
+
+						$this->invalid_reason = 'different_due_date';
+		
+						if ( $this->log ) {
+							$log_message = 'Pedido #%s: Data de vencimento da transação não bate com a informada no pedido. Uma novo %s será gerada.'.PHP_EOL;
+							$log_message .= 'Data de vencimento esperada é %s, data de vencimento recebida: %s';
+							wc_paghiper_add_log(
+								$this->log, 
+								sprintf(
+									$log_message,
+									$this->order_id,
+									$this->gateway_name,
+									$this->order_data['order_transaction_due_date'], 
+									$this->order_data['current_transaction_due_date']
+									),
+								['metadata' => $this->order_data]
+							);
+						}
+					}
 
 				} else {
 
 					$this->invalid_reason = 'different_due_date';
-	
+
+					// Logica de vencimento não bateu para PIX
+					// Como não temos current_transaction_due_datetime, apenas marcamos como diferente
 					if ( $this->log ) {
 						$log_message = 'Pedido #%s: Data de vencimento da transação não bate com a informada no pedido. Uma novo %s será gerada.'.PHP_EOL;
-						$log_message .= 'Data de vencimento esperada é %s, data de vencimento recebida: %s';
-						wc_paghiper_add_log(
-							$this->log, 
-							sprintf(
+						wc_paghiper_add_log( 
+							$this->log,
+							sprintf( 
 								$log_message,
 								$this->order_id,
 								$this->gateway_name,
-								$this->order_data['order_transaction_due_date'], 
-								$this->order_data['current_transaction_due_date']
+								$this->order_data['order_transaction_due_datetime']
 								),
 							['metadata' => $this->order_data]
 						);
 					}
+					
 				}
 
 
@@ -231,8 +265,16 @@ class WC_PagHiper_Transaction {
 	}
 
 	public function determine_due_date() {
-		$order_due_date 		= $this->order_data['order_transaction_due_date'];
-		$transaction_days_due	= (!empty($this->gateway_settings['days_due_date'])) ? $this->gateway_settings['days_due_date'] : 5;
+		$order_due_date 	= $this->order_data['order_transaction_due_date'];
+
+		// Usa o novo setting 'due_date_value', com fallback para o antigo e depois um default
+		if (isset($this->gateway_settings['due_date_value'])) {
+			$transaction_days_due = $this->gateway_settings['due_date_value'];
+		} elseif (!empty($this->gateway_settings['days_due_date'])) {
+			$transaction_days_due = $this->gateway_settings['days_due_date'];
+		} else {
+			$transaction_days_due = 5;
+		}
 
 		$today = new DateTime;
 		$today->setTimezone($this->timezone);
@@ -426,7 +468,18 @@ class WC_PagHiper_Transaction {
 
 		// Due date for the billet
 		$data['order_id'] 		= $this->order_id;
-		$data['days_due_date'] 	= $this->determine_due_date();
+
+		// Lógica de vencimento baseada no modo (dias ou minutos)
+		$due_date_mode = isset($this->gateway_settings['due_date_mode']) ? $this->gateway_settings['due_date_mode'] : 'days';
+
+		if ($due_date_mode === 'minutes' && $this->gateway_id === 'paghiper_pix') {
+			$due_date_value = isset($this->gateway_settings['due_date_value']) ? $this->gateway_settings['due_date_value'] : 30;
+			$data['minutes_due_date'] = $due_date_value;
+			$data['days_due_date'] = 0; // Set days_due_date to 0 when using minutes
+		} else {
+			// Mantém a lógica existente para dias, que agora usa o valor do novo seletor
+			$data['days_due_date'] = $this->determine_due_date();
+		}
 
 		// Seller/Order variable description
 		$billet_description = sprintf("Referente a pedido #%s na loja %s", $this->order_id, $shop_name);
@@ -506,11 +559,13 @@ class WC_PagHiper_Transaction {
 			$this->order_data = $this->order->get_meta( 'wc_paghiper_data' );
 
 			$transaction_base_data = [
-				'transaction_id'				=> $response['transaction_id'],
-				'value_cents'					=> $this->_convert_to_currency($response['value_cents']),
-				'status'						=> $response['status'],
-				'order_id'						=> $response['order_id'],
-				'current_transaction_due_date'	=> $response['due_date'],
+				'transaction_id'					=> $response['transaction_id'],
+				'value_cents'						=> $this->_convert_to_currency($response['value_cents']),
+				'status'							=> $response['status'],
+				'order_id'							=> $response['order_id'],
+				'current_transaction_due_date'		=> $response['due_date'],
+				'current_transaction_minutes_due_date' 	=> $transaction_data['minutes_due_date'],
+				'current_transaction_days_due_date'  	=> $transaction_data['days_due_date'],
 			];
 
 
@@ -734,7 +789,8 @@ class WC_PagHiper_Transaction {
 				}
 
 				if( !$conf || (is_array($conf) && in_array('code', $conf)) ) {
-					$barcode_url = plugins_url( "assets/php/barcode.php?codigo={$barcode_number}", plugin_dir_path( __FILE__ ) );
+										$barcode_url_base = wc_paghiper_assets_url('php/barcode.php');
+					$barcode_url = add_query_arg('codigo', $barcode_number, $barcode_url_base);
 					$html .= ($barcode_number) ? "<img src='{$barcode_url}' title='Código de barras do boleto deste pedido.' style='max-width: 100%;'>" : '';
 				}
 
@@ -775,7 +831,23 @@ class WC_PagHiper_Transaction {
 							$html .= "<img src='{$barcode_url}' title='Código de barras do PIX deste pedido.'>";
 							
 							if( !$conf || (is_array($conf) && in_array('due_date', $conf)) ) {
-								$html .= "<br>Data de vencimento: <strong>{$due_date}</strong>";
+
+								// Data, hora e minuto de vencimento do PIX, caso seja em minutos
+								$due_date_mode = isset($this->gateway_settings['due_date_mode']) ? $this->gateway_settings['due_date_mode'] : 'days';
+								if ($due_date_mode === 'minutes' && isset($this->gateway_settings['due_date_value'])) {
+									$minutes_due = intval($this->gateway_settings['due_date_value']);
+									$order_datetime = $this->order->get_date_created();
+									if ($order_datetime) {
+										$order_datetime->setTimezone($this->timezone);
+										$due_datetime = clone $order_datetime;
+										$due_datetime->modify("+{$minutes_due} minutes");
+										$due_time_formatted = $due_datetime->format('d/m/Y H:i');
+										$html .= "<br>Válido até: <strong>{$due_time_formatted}</strong>";
+									}
+								} else {
+									$html .= "<br>Válido até: <strong>{$due_date}</strong>";
+								}
+
 							}
 
 							$html .= "</div>";
@@ -815,11 +887,27 @@ class WC_PagHiper_Transaction {
 					}
 
 					if( !$conf || (is_array($conf) && in_array('due_date', $conf)) ) {
-						$html .= "<p style='width: 100%; text-align: center;'>Data de vencimento: <strong>{$due_date}</strong></p>";
+
+						// Data, hora e minuto de vencimento do PIX, caso seja em minutos
+						$due_date_mode = isset($this->gateway_settings['due_date_mode']) ? $this->gateway_settings['due_date_mode'] : 'days';
+						if ($due_date_mode === 'minutes' && isset($this->gateway_settings['due_date_value'])) {
+							$minutes_due = intval($this->gateway_settings['due_date_value']);
+							$order_datetime = $this->order->get_date_created();
+							if ($order_datetime) {
+								$order_datetime->setTimezone($this->timezone);
+								$due_datetime = clone $order_datetime;
+								$due_datetime->modify("+{$minutes_due} minutes");
+								$due_time_formatted = $due_datetime->format('d/m/Y H:i');
+								$html .= "<p style='width: 100%; text-align: center;'>Válido até: <strong>{$due_time_formatted}</strong></p>";
+							}
+						} else {
+							$html .= "<p style='width: 100%; text-align: center;'>Válido até: <strong>{$due_date}</strong></p>";
+						}
+
 					}
 					
 					if( !$conf || (is_array($conf) && in_array('digitable', $conf)) ) {
-						$html .= "<p style='width: 100%; text-align: center;'>Seu código PIX: {$digitable_line}</p>";
+						$html .= "<p style='width: 100%; text-align: center;'><strong>Seu código PIX</strong>: {$digitable_line}</p>";
 					}
 				}
 	
@@ -854,6 +942,33 @@ class WC_PagHiper_Transaction {
 
 	}
 
+	public function is_payment_expired() {
+		$due_date_mode = isset($this->gateway_settings['due_date_mode']) ? $this->gateway_settings['due_date_mode'] : 'days';
+
+		if ($this->gateway_id === 'paghiper_pix' && $due_date_mode === 'minutes') {
+			if (empty($this->order_data['order_transaction_due_datetime'])) {
+				return false; // Não é possível determinar se expirou
+			}
+			$due_date = new DateTime($this->order_data['order_transaction_due_datetime'], $this->timezone);
+		} else {
+			if (empty($this->order_data['order_transaction_due_date'])) {
+				return false; // Não é possível determinar se expirou
+			}
+			$due_date = DateTime::createFromFormat('Y-m-d', $this->order_data['order_transaction_due_date'], $this->timezone)->setTime(23, 59, 59);
+		}
+
+		$now = new DateTime('now', $this->timezone);
+
+		return ($now > $due_date);
+	}
+
+	public function is_payment_completed() {
+		$completed_statuses = array('paid', 'completed', 'available', 'received');
+		$completed_statuses[] = apply_filters('woo_paghiper_pending_status', $this->gateway_settings['set_status_when_waiting'], $this->order);
+
+		return (in_array($this->order_data['status'], $completed_statuses));
+	} 
+
 	public function _get_digitable_line() {
 
 		if($this->gateway_id == 'paghiper_pix') {
@@ -877,7 +992,7 @@ class WC_PagHiper_Transaction {
 	}
 
 	public function _get_due_date() {
-		return (DateTime::createFromFormat('Y-m-d', $this->order_data['order_transaction_due_date']))->format('d/m/Y');
+		return (DateTime::createFromFormat('Y-m-d', $this->order_data['order_transaction_due_date'])->format('d/m/Y'));
 	}
 
 	public function _get_past_due_days() {
@@ -890,6 +1005,14 @@ class WC_PagHiper_Transaction {
 
 	public function _get_order() {
 		return $this->order;
+	}
+
+	public function _get_order_data() {
+		return $this->order_data;
+	}
+
+	public function _get_gateway_settings() {
+		return $this->gateway_settings;
 	}
 
 	public function _convert_to_numeric($str) {

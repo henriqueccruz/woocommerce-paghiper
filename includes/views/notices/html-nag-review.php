@@ -23,3 +23,5 @@ if ( ! defined( 'ABSPATH' ) ) {
 	'#', esc_html__('Talvez depois', 'woo-boleto-paghiper'),
 	'#', esc_html__('Deixa pra lá', 'woo-boleto-paghiper')
 ) ?>
+
+<?php wp_enqueue_style( 'wc-paghiper-admin' ); ?>

@@ -8,8 +8,18 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * @return string
  */
-function wc_paghiper_assets_url( $path = '') {
-	return plugin_dir_url( dirname( __FILE__ ) ) . 'assets/' . $path;
+function wc_paghiper_assets_url( $asset = NULL ) {
+
+	$asset = ($asset) ? trim($asset, '/') : '';
+
+	if(!function_exists('wc_paghiper_get_dev_asset_url')) {
+		// In production, load from plugin assets
+		return plugin_dir_url( dirname( __FILE__ ) ) . 'assets/dist/'.$asset;
+	} elseif ( defined( 'WP_DEBUG' ) && WP_DEBUG && @fsockopen( 'wordpress.sandbox.local', 5173 ) ) {
+		// When in development, load from Vite dev server
+        return wc_paghiper_get_dev_asset_url( $asset );
+    }
+
 }
 
 /**
@@ -32,7 +42,7 @@ function wc_paghiper_get_paghiper_url( $code ) {
  */
 function wc_paghiper_get_paghiper_url_by_order_id( $order_id ) {
 	$order_id = trim(str_replace('#', '', $order_id ));
-	$order    = wc_get_order( $order_id );
+	$order    = new WC_Order( $order_id );
 
 	if ($order && !is_wp_error($order)) {
 		return wc_paghiper_get_paghiper_url( $order->get_order_key() );

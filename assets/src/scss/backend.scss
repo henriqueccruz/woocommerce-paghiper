@@ -1,3 +1,13 @@
+@use '_countdown';
+
+// Paleta de Cores (baseada no admin do WordPress)
+$primary-color: #2271b1;
+$secondary-color: #f0f0f1;
+$border-color: #dcdcde;
+$text-color: #2c3338;
+$label-color: #50575e;
+$white: #fff;
+$accent-color: #7e8993;
 
 .woo_paghiper_digitable_line {
 	margin-bottom: 10px !important;
@@ -58,4 +68,357 @@
     		line-height: 16px;
 		}
 	}
+}
+
+
+
+#paghiper-resend-date-fields {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin: 5px 0;
+    flex-wrap: wrap;
+
+    select, input {
+        width: auto;
+		max-width: 80px;
+    }
+
+    input[type="text"] {
+        text-align: center;
+    }
+}
+
+#ph-reusable-notifications {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.ph-notification {
+    padding: 12px 20px !important;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 500;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    opacity: 0;
+    transform: translateY(20px);
+    animation: ph-notification-fade-in 0.3s ease-out forwards;
+
+    .ph-notification-spinner {
+        width: 16px;
+        height: 16px;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        border-top-color: #fff;
+        animation: ph-spin 1s ease-in-out infinite;
+        display: inline-block;
+        margin-right: 10px;
+        vertical-align: -3px;
+    }
+
+    &.success {
+        background-color: #28a745; // Green for success
+    }
+
+    &.error {
+        background-color: #dc3545; // Red for error
+    }
+    
+    &.info {
+        background-color: #17a2b8; // Blue for info
+    }
+
+    &.warning {
+        background-color: #ffd980;
+        color: #da7115;
+        .ph-notification-spinner {
+            border-top-color: #da7115;
+            border-left-color: #da7115;
+            border-right-color: #da7115;
+        }
+    }
+
+    &.fade-out {
+        animation: ph-notification-fade-out 0.3s ease-in forwards;
+    }
+}
+
+@keyframes ph-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes ph-notification-fade-in {
+	from {
+		opacity: 0;
+		transform: translateY(20px);
+	}
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes ph-notification-fade-out {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+}
+
+
+
+
+// Container principal do componente
+#paghiper-due-date-container {
+    background-color: $white;
+    border: 1px solid $border-color;
+    padding: 20px;
+    border-radius: 4px;
+    margin-top: 10px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+
+    // Seletor de modo (Dias vs Cronômetro)
+    .mode-switcher {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        margin-bottom: 25px;
+
+        label {
+            color: $label-color;
+            font-size: 14px;
+            user-select: none;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+
+            input {
+                opacity: 0;
+                width: 0;
+                height: 0;
+            }
+
+            .slider {
+                position: absolute;
+                cursor: pointer;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background-color: $accent-color;
+                transition: .4s;
+                border-radius: 24px;
+
+                &:before {
+                    position: absolute;
+                    content: "";
+                    height: 18px;
+                    width: 18px;
+                    left: 3px;
+                    bottom: 3px;
+                    background-color: white;
+                    transition: .4s;
+                    border-radius: 50%;
+                }
+            }
+
+            input:checked + .slider {
+                background-color: $primary-color;
+            }
+
+            input:checked + .slider:before {
+                transform: translateX(20px);
+            }
+        }
+    }
+
+    // Seções para cada modo
+    #days-mode-section,
+    #minutes-mode-section {
+        display: none;
+        /*overflow: hidden;*/
+        
+        &.active {
+            display: block;
+        }
+    }
+
+    // Estilos comuns para os wrappers de input
+    .days-input-wrapper,
+    .cronometro-wrapper {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 15px;
+    }
+
+    // Controles de seta (chevron)
+    .chevron-control {
+        cursor: pointer;
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        transition: background-color 0.2s ease;
+
+        svg {
+            fill: $accent-color;
+            transition: fill 0.2s ease;
+        }
+
+        &:hover {
+            background-color: $secondary-color;
+            svg {
+                fill: $primary-color;
+            }
+        }
+    }
+    
+    // Estilos do Odômetro
+    .odometer-display {
+        display: flex;
+        gap: 2px;
+    }
+
+    .odometer-digit {
+        height: 40px;
+        line-height: 40px;
+        font-size: 28px;
+        font-weight: 500;
+        overflow: hidden;
+        position: relative;
+        width: 20px;
+        text-align: center;
+        color: $text-color;
+    }
+
+    .odometer-rotor {
+        width: 100%;
+        position: absolute;
+        top: 0;
+        left: 0;
+    }
+
+    .odometer-digit-value {
+        display: block;
+        height: 40px;
+    }
+
+    .odometer-input[type='number'] {
+        -moz-appearance: textfield;
+    }
+
+    .odometer-input::-webkit-outer-spin-button,
+    .odometer-input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+
+    // Wrapper específico para o modo "Dias"
+    .days-input-wrapper .days-display {
+        background: $secondary-color;
+        border: 1px solid $border-color;
+        border-radius: 4px;
+        padding: 5px 0;
+    }
+
+    #minutes-mode-section .days-display {
+        .odometer-display {
+            display: inline-flex;
+            transition: width 0.4s ease-in-out;
+            overflow: hidden;
+            justify-content: flex-end;
+            width: 2.65rem;
+
+            &.has-three-digits {
+                width: 3.9rem;
+            }
+        }
+    }
+
+    // Estilos para as unidades de tempo/dias (layout vertical)
+    .time-unit {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 5px;
+
+        .chevron-control {
+            width: 28px;
+            height: 28px;
+            svg { width: 20px; height: 20px; }
+        }
+        
+        .days-display,
+        .hours-display,
+        .minutes-display {
+             background: $secondary-color;
+             border: 1px solid $border-color;
+             border-radius: 4px;
+             padding: 5px 0;
+        }
+
+        label {
+            font-size: 11px;
+            color: $label-color;
+            text-transform: uppercase;
+            font-weight: 500;
+        }
+    }
+
+    // Estilos específicos do Cronômetro
+    .cronometro-wrapper {
+        .time-separator {
+            font-size: 28px;
+            color: $accent-color;
+            padding-bottom: 25px; // Alinha com os labels
+        }
+    }
+}
+
+.paghiper-copy-transaction-id {
+    svg {
+        vertical-align: text-bottom;
+        stroke: $primary-color;
+    }
+
+    &:hover {
+        stroke: $text-color;
+    }
+}
+
+// Countdown on backend
+#paghiper-pix-countdown {
+    
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+
+    .paghiper-chrono-amount {
+        font-size: 2rem;
+    }
+    .paghiper-chrono-section:not(:first-child):before {
+        font-size: 2rem;
+    }
 }

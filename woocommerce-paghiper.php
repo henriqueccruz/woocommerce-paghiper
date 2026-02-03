@@ -5,14 +5,14 @@
  * Description: 			Ofereça a seus clientes pagamento por PIX e boleto bancário com a PagHiper. Fácil, prático e rapido!
  * Author: 					PagHiper Pagamentos
  * Author URI: 				https://www.paghiper.com
- * Version: 				2.5.3
- * Tested up to: 			6.8
+ * Version: 				3.0
+ * Tested up to: 			6.9
  * License:              	GPLv3
  * License URI:          	http://www.gnu.org/licenses/gpl-3.0.html
  * Text Domain: 			woo-boleto-paghiper
  * Domain Path: 			/languages/
  * WC requires at least: 	4.0.0
- * WC tested up to: 		10.0.2
+ * WC tested up to: 		10.4.3
  * Requires Plugins: 		woocommerce
  * Requires PHP:			7.2
  */	
@@ -35,7 +35,7 @@ class WC_Paghiper {
 	 *
 	 * @var string
 	 */
-	const VERSION = '2.5.3';
+	const VERSION = '3.0';
 
 	/**
 	 * Instance of this class.
@@ -61,8 +61,12 @@ class WC_Paghiper {
 
 			// Admin includes.
 			if ( is_admin() ) {
+				$this->backend_includes();
 				$this->admin_includes();
 			}
+
+			// Initialize Migrator
+			new WC_Paghiper_Migrator();
 
 			add_filter( 'woocommerce_payment_gateways', array( $this, 'add_gateway' ) );
 			add_action( 'init', array( $this, 'add_paghiper_endpoint' ) );
@@ -79,9 +83,6 @@ class WC_Paghiper {
 			add_filter( 'woocommerce_email_attachments', array($this, 'attach_billet'), 10, 3 );
 			add_action( 'wp_enqueue_scripts', array( $this, 'load_plugin_assets' ) );
 			add_action( 'admin_enqueue_scripts', array( $this, 'load_plugin_assets' ) );
-
-			// Migra configurações das chaves antigas ao atualizar
-			add_action( 'init', array( $this, 'migrate_gateway_settings' ));
 
 			// Mostra opções de boleto para pedidos
 			add_filter( 'woocommerce_my_account_my_orders_actions', array( $this, 'order_banking_billet_link' ), 10, 2 );
@@ -143,6 +144,13 @@ class WC_Paghiper {
 	}
 
 	/**
+	 * Get plugin URL.
+	 */
+	public static function get_plugin_url() {
+		return plugin_dir_url( __FILE__ );
+	}
+
+	/**
 	 * Load the plugin text domain for translation.
 	 */
 	public function load_plugin_textdomain() {
@@ -158,10 +166,14 @@ class WC_Paghiper {
 	 */
 	private function includes() {
 
+		include_once 'includes/class-wc-paghiper-frontend.php';
 		include_once 'includes/wc-paghiper-functions.php';
 		include_once 'includes/wc-paghiper-notification.php';
 		include_once 'includes/class-wc-paghiper-billet-gateway.php';
 		include_once 'includes/class-wc-paghiper-pix-gateway.php';
+
+		require_once 'includes/migrations/interface-wc-paghiper-migration.php';
+		require_once 'includes/class-wc-paghiper-migrator.php';
 
 		if(class_exists('AutomateWoo\Variable')) {
 			include_once 'includes/integrations/automate-woo.php';
@@ -171,6 +183,13 @@ class WC_Paghiper {
 
 	/**
 	 * Includes.
+	 */
+	private function backend_includes() {
+		require_once 'includes/class-wc-paghiper-backend.php';
+	}
+
+	/**
+	 * Admin includes.
 	 */
 	private function admin_includes() {
 		require_once 'includes/class-wc-paghiper-admin.php';
@@ -220,7 +239,7 @@ class WC_Paghiper {
 					return; // Exit;
 								
 				// Get an instance of the WC_Order object
-				$order = wc_get_order( $order_id );
+				$order = new WC_Order( $order_id );
 				$payment_method = $order->get_payment_method();
 
 				do_action( "woocommerce_thankyou_{$payment_method}", $order_id );
@@ -320,6 +339,12 @@ class WC_Paghiper {
 			$valid_gateway_apis = [];
 			foreach($gateways as $gateway) {
 				$gateway_settings = get_option( $gateway );
+
+				// Bail early if plugin is not enabled
+				if(is_array($gateway_settings) && array_key_exists('enabled', $gateway_settings) && $gateway_settings['enabled'] !== 'yes') {
+					continue;
+				}
+
 				$is_pix = ($gateway == 'woocommerce_paghiper_pix_settings') ? true : false;
 
 				$gateway_name = ($is_pix) ? esc_html__('PIX PagHiper', 'woo-boleto-paghiper') : esc_html__('Boleto PagHiper', 'woo-boleto-paghiper');
@@ -361,20 +386,45 @@ class WC_Paghiper {
 	 */
 	public static function print_notices() {
 
-		$is_updated = get_transient( 'woo_paghiper_notice_2_1' );
+		// Query current notices
+		global $wpdb;
 
-		if($is_updated) {
+		// Define your specific prefix
+		$prefix = 'woo_paghiper_notice_';
 
-			// Print notices
-			add_action( 'admin_notices', function() {
-				echo sprintf(
-					'<div class="error notice paghiper-dismiss-notice is-dismissible" data-notice-id="notice_2_1"><p><strong>%s: </strong>%s <a href="%s">%s</a></p></div>', 
-					esc_html__('PIX PagHiper', 'woo-boleto-paghiper'), 
-					esc_html__('Você ja pode receber pagamentos por PIX! Configure aqui:', 'woo-boleto-paghiper'), 
-					esc_url(admin_url('admin.php?page=wc-settings&tab=checkout&section=wc_paghiper_pix_gateway')), 
-					esc_html__('Configurações do PIX PagHiper', 'woo-boleto-paghiper'));
-			});
+		// Prepare the query to find all matches in the options table
+		// We look for '_transient_' + our custom prefix
+		$results = $wpdb->get_results( 
+			$wpdb->prepare(
+				"SELECT option_name, option_value FROM {$wpdb->options} WHERE option_name LIKE %s",
+				'_transient_' . $wpdb->esc_like( $prefix ) . '%'
+			) 
+		);
+
+		$pending_notices = [];
+		foreach ( $results as $row ) {
+			// Strip the WordPress internal prefix to get the clean transient key
+			$transient_key = str_replace( '_transient_', '', $row->option_name );
 			
+			// Use the native function to handle expiration checks and unserialization
+			$value = get_transient( $transient_key );
+			
+			if ( false !== $value ) {
+				$pending_notices[$transient_key] = $value;
+			}
+		}
+
+		$notices = [
+			'2_1'	=> 'includes/views/notices/plugin-updates/2.1.php',
+			'3_0' 	=> 'includes/views/notices/plugin-updates/3.0.php',
+		];
+
+		foreach($notices as $version => $filename) {
+			if(array_key_exists($prefix.$version, $pending_notices)) {
+				add_action( 'admin_notices', function() use ($filename) {
+					include_once $filename;
+				});
+			}
 		}
 
 		add_action( 'admin_notices', function() {
@@ -501,85 +551,20 @@ class WC_Paghiper {
 		// Make sure we have our own dir at /wp-content/uploads so we can write our PDFs
 		$uploads = wp_upload_dir();
 		$upload_dir = $uploads['basedir'];
-		$paghiper_dir = $upload_dir . '/paghiper';
+		$paghiper_dir = $upload_dir . '/paghiper/billets';
 
-		if (!$wp_filesystem->is_dir($paghiper_dir)) {
-			$wp_filesystem->mkdir( $paghiper_dir );
+		if ( ! $wp_filesystem->is_dir( $paghiper_dir ) ) {
+			if ( ! wp_mkdir_p( $paghiper_dir ) ) {
+				error_log( 'WC PagHiper: Falha ao criar o diretório de uploads em ' . $paghiper_dir );
+			}
 		}
 	}
 
 	/**
 	 * Plugin deactivate method.
 	 */
-	public static function deactivate() {
+	public function deactivate() {
 		flush_rewrite_rules();
-	}
-
-	/**
-	 * Migrate settings from old versions
-	 */
-	public function migrate_gateway_settings() {
-
-		$plugin_db_version = (float) get_option( 'woocommerce_paghiper_db_version');
-		if(get_option( 'woocommerce_paghiper_db_version' ) == 1.1) {
-			return false;
-		}
-
-		$is_migrated = FALSE;
-
-		// TODO: Check if there are old credentials that need to be migrated
-		$legacy_gateway_settings = get_option( 'woocommerce_paghiper_settings' );
-		if(!is_array($legacy_gateway_settings) || empty($legacy_gateway_settings)) {
-			$legacy_gateway_settings = NULL;
-		}
-
-		// Maybe migrate old gateway settings for the new billet gateway
-		$billet_gateway_settings = get_option( 'woocommerce_paghiper_billet_settings' );
-		$billet_gateway_options = array('enabled', 'title', 'description', 'api_key', 'token', 'paghiper_time', 'debug', 'days_due_date', 'skip_non_workdays', 'open_after_day_due', 'replenish_stock', 'fixed_description', 'set_status_when_waiting', 'set_status_when_paid', 'set_status_when_cancelled');
-		
-		if(!$billet_gateway_settings && $legacy_gateway_settings) {
-			$billet_gateway_settings = [];
-
-			foreach($billet_gateway_options as $billet_gateway_option) {
-				$billet_gateway_settings[$billet_gateway_option] = $legacy_gateway_settings[$billet_gateway_option];
-			}
-
-			add_option( 'woocommerce_paghiper_billet_settings', $billet_gateway_settings, '', 'yes' );
-			$is_migrated = TRUE;
-		}
-	
-
-		// Maybe migrate old gateway settings for the new PIX gateway
-		$pix_gateway_settings = get_option( 'woocommerce_paghiper_pix_settings' );
-
-		if(!$pix_gateway_settings && $legacy_gateway_settings) {
-			$pix_gateway_options = $billet_gateway_options;
-			$pix_gateway_settings = [];
-
-			foreach($pix_gateway_options as $pix_gateway_option) {
-				$pix_gateway_settings[$pix_gateway_option] = $legacy_gateway_settings[$pix_gateway_option];
-			}
-
-			unset($pix_gateway_settings['open_after_day_due']);
-			$pix_gateway_settings['title'] = 'PIX';
-			$pix_gateway_settings['description'] = 'Pague de maneira rápida e prática usando PIX';
-
-			add_option( 'woocommerce_paghiper_pix_settings', $pix_gateway_settings, '', 'yes' );
-			$is_migrated = TRUE;
-		}
-
-		if($is_migrated) {
-			set_transient( 'woo_paghiper_notice_2_1', true, (5 * 24 * 60 * 60) );
-		}
-
-		$billet_gateway_settings = get_option( 'woocommerce_paghiper_billet_settings' );
-		$pix_gateway_settings = get_option( 'woocommerce_paghiper_pix_settings' );
-
-		if(!empty($billet_gateway_settings['api_key']) || !empty($pix_gateway_settings['api_key'])) {
-			update_option( 'woocommerce_paghiper_db_version', 1.1, '', 'yes');
-		}
-
-		return $is_migrated;
 	}
 
 	/**
@@ -645,7 +630,7 @@ class WC_Paghiper {
 	
 					$uploads = wp_upload_dir();
 					$upload_dir = $uploads['basedir'];
-					$upload_dir = $upload_dir . '/paghiper';
+					$upload_dir = $upload_dir . '/paghiper/billets';
 	
 					$billet_pdf_file = $upload_dir.'/'.$transaction_id.'.pdf';
 	
@@ -774,18 +759,26 @@ class WC_Paghiper {
 	public function load_plugin_assets() {
 
 		if( !wp_script_is( 'jquery-mask', 'registered' ) ) {
-			wp_register_script( 'jquery-mask', wc_paghiper_assets_url() . 'js/libs/jquery.mask/jquery.mask.min.js', array( 'jquery' ), '1.14.16', false );
+			wp_register_script( 'jquery', wc_paghiper_assets_url('js/libs/jquery/jquery-3.6.0.min.js'), array(), '3.6.0', false );
+		}
+
+		if( !wp_script_is( 'jquery-mask', 'registered' ) ) {
+			wp_register_script( 'jquery-mask', wc_paghiper_assets_url('js/libs/jquery.mask/jquery.mask.min.js'), array( 'jquery' ), '1.14.16', false );
 		}
 
 		if( !wp_script_is( 'paghiper-backend-js', 'registered' ) ) {
-			wp_register_script( 'paghiper-backend-js', wc_paghiper_assets_url() . 'js/backend.min.js', array( 'jquery' ),'1.1', false );
+			wp_register_script( 'paghiper-backend-js', wc_paghiper_assets_url('js/backend.min.js'), array( 'jquery' ),'1.1', false );
 		}
 
 		if( !wp_script_is( 'paghiper-frontend-js', 'registered' ) ) {
-			wp_register_script( 'paghiper-frontend-js', wc_paghiper_assets_url() . 'js/frontend.min.js',array( 'jquery' ),'1.0', false );
+			wp_register_script( 'paghiper-frontend-js', wc_paghiper_assets_url('js/frontend.min.js'), array( 'jquery' ),'1.0', false );
 		}
 
-		wp_register_style( 'paghiper-frontend-css', wc_paghiper_assets_url() . 'css/frontend.min.css','','1.0', false );
+		if( !wp_script_is( 'simply-countdown', 'registered' ) ) {
+			wp_register_script( 'simply-countdown', wc_paghiper_assets_url('js/libs/simplyCountdown/simplyCountdown.min.js'), array( 'jquery' ), '1.0', false );
+		}
+
+		wp_register_style( 'paghiper-frontend-css', wc_paghiper_assets_url('css/frontend.min.css'), '', '1.0', false );
 
 		
 
@@ -798,13 +791,16 @@ class WC_Paghiper {
 			wp_enqueue_style( 'paghiper-frontend-css' );
 			wp_enqueue_script(  'paghiper-frontend-js' );
 
+			// Load countdown script only on thank you page or when our shortcode is used
+			if ( is_wc_endpoint_url( 'order-received' ) || is_view_order_page() ) {
+				wp_enqueue_script(  'simply-countdown' );
+			}
+
 		} else {
 			
 			wp_localize_script( 'paghiper-backend-js', 'notice_params', array(
 				'ajaxurl' => get_admin_url() . 'admin-ajax.php', 
 			));
-			
-			wp_enqueue_script(  'paghiper-backend-js' );
 		}
 	}
 
@@ -840,12 +836,12 @@ class WC_Paghiper {
 	public function print_requirement_notices() {
 
 		/**
-		 * Woocommerce missing notice.
+		 * Woocommerce missing or outdated notice.
 		 * 
 		 * @return string
 		 */
 
-		if ( !class_exists( 'WC_Payment_Gateway' ) ) {
+		if ( !class_exists( 'WC_Payment_Gateway' ) || ( defined('WC_VERSION') && version_compare( WC_VERSION, '4.0.0', '<' ) ) ) {
 			include_once 'includes/views/notices/html-notice-woocommerce-missing.php';
 		}
 
@@ -874,7 +870,7 @@ class WC_Paghiper {
 		 */
 		$uploads = wp_upload_dir();
 		$upload_dir = $uploads['basedir'];
-		$upload_dir = $upload_dir . '/paghiper';
+		$upload_dir = $upload_dir . '/paghiper/billets';
 
 		global $wp_filesystem;
 		if (empty($wp_filesystem)) {
@@ -913,7 +909,7 @@ class WC_Paghiper {
 		 * 
 		 * @return string
 		 */
-		if (version_compare(PHP_VERSION, '5.6.0', '<')) {
+		if (version_compare(PHP_VERSION, '7.2', '<')) {
 			include_once 'includes/views/notices/html-notice-min-php-version.php';
 		}
 

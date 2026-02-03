@@ -18,7 +18,7 @@ function woocommerce_paghiper_valid_ipn_request($return, $order_no, $settings) {
 
     global $paghiper_log;
 
-    $order          = wc_get_order($order_no);
+    $order          = new WC_Order($order_no);
     $order_status   = $order->get_status();
     $gateway_id     = $order->get_payment_method();
     $gateway_name   = ($gateway_id !== 'paghiper_pix') ? __('boleto', 'woo-boleto-paghiper') : __('PIX', 'woo-boleto-paghiper');
@@ -46,7 +46,7 @@ function woocommerce_paghiper_valid_ipn_request($return, $order_no, $settings) {
 
     sleep(3);
 
-    $order              = wc_get_order($order_no);
+    $order              = new WC_Order($order_no);
     $last_request_id    = $order->get_meta( 'wc_paghiper_ipn_request_id' );
     if($request_id !== $last_request_id) {
         if ( $paghiper_log ) {
@@ -218,40 +218,42 @@ function woocommerce_paghiper_check_ipn_response() {
         $PagHiperAPI 	= new PagHiper($api_key, $token);
         $response 		= $PagHiperAPI->transaction()->process_ipn_notification($notification_id, $transaction_id, $transaction_type);
 
-        if($response['result'] == 'success') {
+        if(is_array($response)) {
+            if($response['result'] == 'success') {
 
-            if ( $paghiper_log ) {
-                $context = [
-                    'received_payload' => var_export($_POST, TRUE),
-                    'retrieved_payload' => var_export($response, TRUE)
-                ];
+                if ( $paghiper_log ) {
+                    $context = [
+                        'received_payload' => var_export($_POST, TRUE),
+                        'retrieved_payload' => ($response ? var_export($response, TRUE) : NULL)
+                    ];
 
-                wc_paghiper_add_log( $paghiper_log, sprintf('Pedido #%s: Post de retorno da PagHiper confirmado.', $response['order_id']), $context );
+                    wc_paghiper_add_log( $paghiper_log, sprintf('Pedido #%s: Post de retorno da PagHiper confirmado.', $response['order_id']), $context );
+                }
+
+                // Print a 200 HTTP code for the notification engine
+                header( 'HTTP/1.1 200 OK' );
+
+                // Carry on with the operation
+                woocommerce_paghiper_valid_ipn_request( $response, $response['order_id'], $settings );
+
+
+            } else {
+
+                if ( $paghiper_log ) {
+                    $message    = sprintf( 'Não foi possível checar o post de retorno da PagHiper.');
+
+                    $error = $response->get_error_message();
+                    $context    = [
+                        'error'             => $error,
+                        'received_payload'  => var_export($_POST, TRUE),
+                        'retrieved_payload' => ($response ? var_export($response, TRUE) : NULL)
+                    ];
+                    wc_paghiper_add_log( $paghiper_log, $message, $context, WC_Log_Levels::CRITICAL );
+                }
+
+                wp_die( esc_html__( 'Solicitação PagHiper Não Autorizada', 'woo-boleto-paghiper' ), esc_html__( 'Solicitação PagHiper Não Autorizada', 'woo-boleto-paghiper' ), array( 'response' => 401 ) );
+
             }
-
-            // Print a 200 HTTP code for the notification engine
-            header( 'HTTP/1.1 200 OK' );
-
-            // Carry on with the operation
-            woocommerce_paghiper_valid_ipn_request( $response, $response['order_id'], $settings );
-
-
-        } else {
-
-            if ( $paghiper_log ) {
-                $message    = sprintf( 'Não foi possível checar o post de retorno da PagHiper.');
-
-                $error      = $response->get_error_message();
-                $context    = [
-                    'error'             => $error,
-                    'received_payload'  => var_export($_POST, TRUE),
-                    'retrieved_payload' => var_export($response, TRUE)
-                ];
-                wc_paghiper_add_log( $paghiper_log, $message, $context, WC_Log_Levels::CRITICAL );
-            }
-
-            wp_die( esc_html__( 'Solicitação PagHiper Não Autorizada', 'woo-boleto-paghiper' ), esc_html__( 'Solicitação PagHiper Não Autorizada', 'woo-boleto-paghiper' ), array( 'response' => 401 ) );
-
         }
 
     } catch (Exception $e) {
@@ -265,29 +267,30 @@ function woocommerce_paghiper_check_ipn_response() {
                     'error'             => $error,
                     'exception_type'    => 'ClientException',
                     'received_payload'  => var_export($_POST, TRUE),
-                    'retrieved_payload' => var_export($response, TRUE)
+                    'retrieved_payload' => ($response ? var_export($response, TRUE) : NULL)
                 ];
                 wc_paghiper_add_log( $paghiper_log, $message, $context, WC_Log_Levels::CRITICAL );
             }
 
             wp_die( esc_html__( 'Solicitação PagHiper Não Autorizada', 'woo-boleto-paghiper' ), esc_html__( 'Solicitação PagHiper Não Autorizada', 'woo-boleto-paghiper' ), array( 'response' => 402 ) );
     } catch (ClientException $e) {
+
         // catches all ClientExceptions
 
-            if ( $paghiper_log ) {
-                $message    = sprintf( 'Não foi possível checar o post de retorno da PagHiper.');
+        if ( $paghiper_log ) {
+            $message    = sprintf( 'Não foi possível checar o post de retorno da PagHiper.');
 
-                $error      = $e->getMessage();
-                $context    = [
-                    'error'             => $error,
-                    'exception_type'    => 'ClientException',
-                    'received_payload'  => var_export($_POST, TRUE),
-                    'retrieved_payload' => var_export($response, TRUE)
-                ];
-                wc_paghiper_add_log( $paghiper_log, $message, $context, WC_Log_Levels::CRITICAL );
-            }
+            $error      = $e->getMessage();
+            $context    = [
+                'error'             => $error,
+                'exception_type'    => 'ClientException',
+                'received_payload'  => var_export($_POST, TRUE),
+                'retrieved_payload' => ($response ? var_export($response, TRUE) : NULL)
+            ];
+            wc_paghiper_add_log( $paghiper_log, $message, $context, WC_Log_Levels::CRITICAL );
+        }
 
-            wp_die( esc_html__( 'Solicitação PagHiper Não Autorizada', 'woo-boleto-paghiper' ), esc_html__( 'Solicitação PagHiper Não Autorizada', 'woo-boleto-paghiper' ), array( 'response' => 402 ) );
+        wp_die( esc_html__( 'Solicitação PagHiper Não Autorizada', 'woo-boleto-paghiper' ), esc_html__( 'Solicitação PagHiper Não Autorizada', 'woo-boleto-paghiper' ), array( 'response' => 402 ) );
 
     } catch (RequestException $e) {
         // catches all RequestExceptions
@@ -300,7 +303,7 @@ function woocommerce_paghiper_check_ipn_response() {
                     'error'             => $error,
                     'exception_type'    => 'RequestException',
                     'received_payload'  => var_export($_POST, TRUE),
-                    'retrieved_payload' => var_export($response, TRUE)
+                    'retrieved_payload' => ($response ? var_export($response, TRUE) : NULL)
                 ];
                 wc_paghiper_add_log( $paghiper_log, $message, $context, WC_Log_Levels::CRITICAL );
             }
