@@ -35,7 +35,7 @@ const Content = ( props ) => {
 
 	
     const [ taxID, setTaxID ] = useState('');
-    const [ payerName, setPayerName ] = useState('');
+    const [ errorMessage, setErrorMessage ] = useState('');
 
 	useEffect( () => {
 		const unsubscribe = onPaymentSetup( async () => {
@@ -43,7 +43,7 @@ const Content = ( props ) => {
 			// For example, we might validate a custom field, or perform an AJAX request, and then emit a response indicating it is valid or not.
 
 			const paghiperTaxId = taxID;
-			const paghiperTaxIdIsValid = !! paghiperTaxId.length;
+			const paghiperTaxIdIsValid = paghiperTaxId.length >= 11;
 			const paghiperTaxIdFieldName = "_" + props.gatewayName + "_cpf_cnpj";
 
 			if ( paghiperTaxIdIsValid ) {
@@ -55,11 +55,17 @@ const Content = ( props ) => {
 						},
 					},
 				};
+			} else {
+				console.log(`Paghiper TaxID snatched: ${paghiperTaxId}`);
+				console.log(`paghiperTaxIdIsValid returned: ${paghiperTaxIdIsValid}`);
 			}
+
+			const errorMsg = __( 'O CPF/CNPJ informado é inválido.', 'woo-boleto-paghiper' );
+	        setErrorMessage( errorMsg );     
 
 			return {
 				type: emitResponse.responseTypes.ERROR,
-				message: 'There was an error',
+				message: errorMsg,
 			};
 		} );
 		// Unsubscribes when this component is unmounted.
@@ -71,6 +77,7 @@ const Content = ( props ) => {
 		emitResponse.responseTypes.ERROR,
 		emitResponse.responseTypes.SUCCESS,
 		onPaymentSetup,
+		props.gatewayName
 	] );
 
 	const onChange = ( paymentEvent ) => {
@@ -78,7 +85,11 @@ const Content = ( props ) => {
 			console.log('Paghiper: Payment Error');
 		}
 
-		setTaxID(paymentEvent.target.value.replace(/\D/g, ''));
+		setErrorMessage('');
+		const newValue = paymentEvent.target ? paymentEvent.target.value : paymentEvent;
+		setTaxID(newValue.replace(/\D/g, ''));
+
+		//setTaxID(paymentEvent.target.value.replace(/\D/g, ''));
 	}
 
 	return (
@@ -86,7 +97,9 @@ const Content = ( props ) => {
 			{decodeEntities(props.gatewayDescription || '')}
 			<InlineTaxIdField 
 				gatewayName={ props.gatewayName }
-				onChange={ onChange } 
+				value={ taxID }
+				onChange={ onChange }
+				errorMessage={ errorMessage }
 				inputErrorComponent={ ValidationInputError }
 			/>
 		</>
