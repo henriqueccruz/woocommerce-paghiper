@@ -31,10 +31,15 @@ export const InlineTaxIdField = ( {
 		hideIcon: true,
 	} );
 	
-    // Sync internal state with prop value
+    // Sync internal state with prop value (only if actual numbers changed)
     useEffect(() => {
-        if ( value !== undefined && value !== fieldInput ) {
-            setFieldInput( value );
+        if ( value !== undefined ) {
+            const cleanPropValue = value.toString().replace(/\D/g, '');
+            const cleanInternalValue = fieldInput.toString().replace(/\D/g, '');
+
+            if ( cleanPropValue !== cleanInternalValue ) {
+                 setFieldInput( value );
+            }
         }
     }, [ value ]);
 
@@ -46,18 +51,12 @@ export const InlineTaxIdField = ( {
         }
     }, [ errorMessage ]);
 
-    const errorCallback = ( event ) => {
-		if ( event.error ) {
-			setError( event.error.message );
-		} else {
-			setError( '' );
-		}
-		setIsEmpty( event.empty );
-		onChange( event );
-
-        if( !event.target.value ) {
-            setIsEmpty( true );
-        }
+    const handleChange = ( event ) => {
+        const newValue = event.target.value;
+        setFieldInput( newValue );
+        setIsEmpty( !newValue );
+        setError( '' ); // Reset error state on change
+        onChange( event );
     }
 
     useEffect(() => {
@@ -66,7 +65,8 @@ export const InlineTaxIdField = ( {
         // Reset states before validation
         setIsInvalid(false);
         setIsComplete(false);
-        setError('');
+        // setError(''); // Don't clear error here, let the user type. Only clear if valid? 
+        // Logic moved: Validation checks run below.
 
         if(cleanInput.length > 11) {
             setFieldLabel(__('CNPJ do Pagador', 'woo-boleto-paghiper'));
@@ -84,6 +84,7 @@ export const InlineTaxIdField = ( {
                     setIsInvalid(true);
                 } else {
                     setIsComplete(true);
+                    setError(''); // Clear error if valid
                 }
             } else if(cleanInput.length === 14) {
                 // Valida CNPJ
@@ -92,11 +93,12 @@ export const InlineTaxIdField = ( {
                     setIsInvalid(true);
                 } else {
                     setIsComplete(true);
+                    setError(''); // Clear error if valid
                 }
             } else {
-                // Incomplete length
+                // Incomplete length logic...
                  if(!isFocus) {
-                    // Only show "incomplete" error on blur to avoid annoying user while typing
+                    // Only show "incomplete" error on blur
                     if(cleanInput.length > 11 && cleanInput.length < 14) {
                         setError(__('O número do seu CNPJ está incompleto.', 'woo-boleto-paghiper'));
                         setIsInvalid(true);
@@ -139,22 +141,21 @@ export const InlineTaxIdField = ( {
 	return (
 		<>
             <div className="wc-block-components-form">
-                <div className={"wc-block-gateway-container wc-block-components-text-input wc-inline-tax-id-element paghiper-taxid-fieldset" + (isActive || !isEmpty ? ' is-active' : '')}>
+                <div className={"wc-block-gateway-container wc-block-components-text-input wc-inline-tax-id-element paghiper-taxid-fieldset" + (isActive || !isEmpty ? ' is-active' : '') + (isInvalid ? ' has-error invalid' : '')}>
                     <input 
                         type="text"
-                        id="wc-paghiper-inline-tax-id-element"
+                        id={`wc-paghiper-inline-tax-id-element-${gatewayName}`}
                         name={"_" + gatewayName + "_cpf_cnpj"}
-                        className={ baseTextInputStyles + (isEmpty ? ' empty Input--empty' : '') + (isInvalid ? ' invalid' : '') + (isComplete ? ' valid' : '')}
+                        className={ baseTextInputStyles + (isEmpty ? ' empty Input--empty' : '') + (isInvalid ? ' has-error invalid' : '') + (isComplete ? ' valid' : '')}
                         onBlur={ () => onActive( isEmpty, false ) }
                         onFocus={ () => onActive( isEmpty, true ) }
-                        onChange={ errorCallback }
-                        onInput={ e => setFieldInput(e.target.value) }
+                        onChange={ handleChange }
                         aria-label={ fieldLabel }
                         value={ fieldInput }
                         required
                         title
                     />
-                    <label htmlFor="wc-paghiper-inline-tax-id-element">{ fieldLabel }</label>
+                    <label htmlFor={`wc-paghiper-inline-tax-id-element-${gatewayName}`}>{ fieldLabel }</label>
                     <ValidationInputError errorMessage={ error } />
                 </div>
             </div>
