@@ -30,7 +30,7 @@ class WC_Paghiper_Base_Gateway {
 		$this->gateway = $gateway;
 		$this->order = null;
 
-		$this->isPIX = $this->isPIX ? true : false;
+		$this->isPIX = ($this->gateway->id === 'paghiper_pix');
 
 		// Define as variáveis que vamos usar e popula com os dados de configuração
 		$this->days_due_date 			= $this->gateway->get_option( 'days_due_date' );
@@ -656,6 +656,14 @@ class WC_Paghiper_Base_Gateway {
 				if(!$taxid_payer || empty($taxid_payer)) {
 					wc_clear_notices();
 					wc_add_notice(  'Ops! Precisamos também do seu <strong>nome</strong>.', 'error' );
+
+					if ( $this->log ) {
+						wc_paghiper_add_log( 
+							$this->log, 
+							'Checkout: Cliente não preencheu TaxID (CPF/CNPJ)',
+							['checkout_data' => $_POST]
+						);
+					}
 				}
 			} else {
 				if(!empty($not_empty_keys)) {
@@ -663,8 +671,22 @@ class WC_Paghiper_Base_Gateway {
 
 					if(strlen($maybe_valid_taxid) > 11) {
 						wc_add_notice(  '<strong>Número de CNPJ</strong> inválido!', 'error' );
+
+						if ( $this->log ) {
+							wc_paghiper_add_log( 
+								$this->log, 
+								sprintf( 'Checkout: CNPJ inválido', $maybe_valid_taxid) 
+							);
+						}
 					} else {
 						wc_add_notice(  '<strong>Número de CPF</strong> inválido!', 'error' );
+
+						if ( $this->log ) {
+							wc_paghiper_add_log( 
+								$this->log, 
+								sprintf( 'Checkout: CPF inválido', $maybe_valid_taxid) 
+							);
+						}
 					}
 				}
 			}
