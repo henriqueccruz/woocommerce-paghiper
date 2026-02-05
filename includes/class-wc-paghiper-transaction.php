@@ -22,6 +22,7 @@ class WC_PagHiper_Transaction {
 	private $order_data;
 	private $gateway_id;
 	private $gateway_name;
+	private $isPIX;
 	private $gateway_settings;
 	private $log;
 	private $invalid_reason;
@@ -43,7 +44,8 @@ class WC_PagHiper_Transaction {
 		// Pega a configuração atual do plug-in.
 		$this->gateway_id = $this->order->get_payment_method();
 		$this->gateway_name  = ($this->gateway_id !== 'paghiper_pix') ? 'boleto' : 'PIX';
-		$this->gateway_settings = ($this->gateway_id == 'paghiper_pix') ? get_option( 'woocommerce_paghiper_pix_settings' ) : get_option( 'woocommerce_paghiper_billet_settings' );
+		$this->gateway_settings = ($this->isPIX) ? get_option( 'woocommerce_paghiper_pix_settings' ) : get_option( 'woocommerce_paghiper_billet_settings' );
+		$this->isPIX = ($this->gateway_id == 'paghiper_pix') ? TRUE : FALSE;
 
 		// Inicializa logs, caso ativados
 		$this->log = wc_paghiper_initialize_log( $this->gateway_settings[ 'debug' ] );
@@ -95,7 +97,7 @@ class WC_PagHiper_Transaction {
 		}
 
 		// Define data de vencimento, caso exista
-		$order_due_date_key = ($this->gateway_id === 'paghiper_pix' && isset($this->gateway_settings['due_date_mode']) && $this->gateway_settings['due_date_mode'] === 'minutes')
+		$order_due_date_key = ($this->isPIX && isset($this->gateway_settings['due_date_mode']) && $this->gateway_settings['due_date_mode'] === 'minutes')
 			? 'order_transaction_due_datetime'
 			: 'order_transaction_due_date';
 
@@ -134,7 +136,7 @@ class WC_PagHiper_Transaction {
 			$different_total = ( $this->order->get_total() == $this->order_data['value_cents'] ? NULL : TRUE );
 
 			// Checamos se a data de vencimento é válida
-			if ($this->gateway_id === 'paghiper_pix' && isset($this->gateway_settings['due_date_mode']) && $this->gateway_settings['due_date_mode'] === 'minutes') {
+			if ($this->isPIX && isset($this->gateway_settings['due_date_mode']) && $this->gateway_settings['due_date_mode'] === 'minutes') {
 				$original_due_date = new DateTime($this->order_data['order_transaction_due_datetime'], $this->timezone);
 				$different_due_date = ($today_date > $original_due_date) ? TRUE : FALSE ;
 			} else {
@@ -316,7 +318,7 @@ class WC_PagHiper_Transaction {
 		}
 
 		// Checamos se a data de vencimento cai em um final de semana
-		$maybe_add_workdays = ($this->gateway_id == 'paghiper_pix') ? null : $this->gateway_settings['skip_non_workdays'];
+		$maybe_add_workdays = ($this->isPIX) ? null : $this->gateway_settings['skip_non_workdays'];
 		$transaction_due_days = wc_paghiper_add_workdays($transaction_due_date, $this->order, 'days', $maybe_add_workdays);
 
 		// Retorna a quantidade de dias para vencimento da transação a ser gerada
@@ -472,7 +474,7 @@ class WC_PagHiper_Transaction {
 		// Lógica de vencimento baseada no modo (dias ou minutos)
 		$due_date_mode = isset($this->gateway_settings['due_date_mode']) ? $this->gateway_settings['due_date_mode'] : 'days';
 
-		if ($due_date_mode === 'minutes' && $this->gateway_id === 'paghiper_pix') {
+		if ($due_date_mode === 'minutes' && $this->isPIX) {
 			$due_date_value = isset($this->gateway_settings['due_date_value']) ? $this->gateway_settings['due_date_value'] : 30;
 			$data['minutes_due_date'] = $due_date_value;
 			$data['days_due_date'] = 0; // Set days_due_date to 0 when using minutes
@@ -499,9 +501,9 @@ class WC_PagHiper_Transaction {
 			}
 		}
 
-		$data['transaction_type']				= ($this->gateway_id == 'paghiper_pix') ? 'pix' : 'billet';
+		$data['transaction_type']				= ($this->isPIX) ? 'pix' : 'billet';
 		$data['notification_url']				= add_query_arg([
-														'gateway' 	=> (($this->gateway_id == 'paghiper_pix') ? 'pix' : 'billet'),
+														'gateway' 	=> (($this->isPIX) ? 'pix' : 'billet'),
 														'orderId' 	=> $this->order_id,
 													], get_site_url(null, $this->base_url.'wc-api/WC_Gateway_Paghiper/'));
 
@@ -569,7 +571,7 @@ class WC_PagHiper_Transaction {
 			];
 
 
-			if($this->gateway_id == 'paghiper_pix') {
+			if($this->isPIX) {
 
 				if(!array_key_exists('pix_code', $response)) {
 					if ( $this->log ) {
@@ -640,7 +642,7 @@ class WC_PagHiper_Transaction {
 
 			if(strpos($order_status, 'wc-pending') !== false) { ## adaptacao para versões do php 7.4
 				/* translators: %s: Transaction type. For use in order notes */
-				$this->order->update_status( $waiting_status, sprintf(__( 'PagHiper: %s gerado e enviado por e-mail.', 'woo-boleto-paghiper' ), (($this->gateway_id == 'paghiper_pix') ? __('PIX', 'woo-boleto-paghiper') : __('Boleto', 'woo-boleto-paghiper')) ) );
+				$this->order->update_status( $waiting_status, sprintf(__( 'PagHiper: %s gerado e enviado por e-mail.', 'woo-boleto-paghiper' ), (($this->isPIX) ? __('PIX', 'woo-boleto-paghiper') : __('Boleto', 'woo-boleto-paghiper')) ) );
 			}
 
 			if ( $this->log ) {
@@ -649,7 +651,7 @@ class WC_PagHiper_Transaction {
 					sprintf( 
 						'Pedido #%s: Transação %s criada com sucesso.', 
 						$this->order_id, 
-						(($this->gateway_id == 'paghiper_pix') ? __('PIX', 'woo-boleto-paghiper') : __('boleto', 'woo-boleto-paghiper')), 
+						(($this->isPIX) ? __('PIX', 'woo-boleto-paghiper') : __('boleto', 'woo-boleto-paghiper')), 
 					),
 					[
 						'metadata' => $this->order_data,
@@ -945,7 +947,7 @@ class WC_PagHiper_Transaction {
 	public function is_payment_expired() {
 		$due_date_mode = isset($this->gateway_settings['due_date_mode']) ? $this->gateway_settings['due_date_mode'] : 'days';
 
-		if ($this->gateway_id === 'paghiper_pix' && $due_date_mode === 'minutes') {
+		if ($this->isPIX && $due_date_mode === 'minutes') {
 			if (empty($this->order_data['order_transaction_due_datetime'])) {
 				return false; // Não é possível determinar se expirou
 			}
@@ -971,7 +973,7 @@ class WC_PagHiper_Transaction {
 
 	public function _get_digitable_line() {
 
-		if($this->gateway_id == 'paghiper_pix') {
+		if($this->isPIX) {
 			if(array_key_exists('emv', $this->order_data)) {
 				return $this->order_data['emv'];
 			}
@@ -986,7 +988,7 @@ class WC_PagHiper_Transaction {
 
 	public function _get_barcode() {
 		return (
-			($this->gateway_id == 'paghiper_pix') ? $this->order_data['qrcode_image_url'] :
+			($this->isPIX) ? $this->order_data['qrcode_image_url'] :
 				((array_key_exists('barcode', $this->order_data)) ? $this->order_data['barcode'] : NULL)
 		);
 	}
