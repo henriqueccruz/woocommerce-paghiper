@@ -561,15 +561,17 @@ class WC_PagHiper_Transaction {
 			$this->order_data = $this->order->get_meta( 'wc_paghiper_data' );
 
 			$transaction_base_data = [
-				'transaction_id'					=> $response['transaction_id'],
-				'value_cents'						=> $this->_convert_to_currency($response['value_cents']),
-				'status'							=> $response['status'],
-				'order_id'							=> $response['order_id'],
-				'current_transaction_due_date'		=> $response['due_date'],
-				'current_transaction_minutes_due_date' 	=> $transaction_data['minutes_due_date'],
+				'transaction_id'						=> $response['transaction_id'],
+				'value_cents'							=> $this->_convert_to_currency($response['value_cents']),
+				'status'								=> $response['status'],
+				'order_id'								=> $response['order_id'],
+				'current_transaction_due_date'			=> $response['due_date'],
 				'current_transaction_days_due_date'  	=> $transaction_data['days_due_date'],
 			];
 
+			if($this->isPIX && array_key_exists('minutes_due_date', $transaction_data)) {
+				$transaction_base_data['current_transaction_minutes_due_date'] = $transaction_data['minutes_due_date']
+			}
 
 			if($this->isPIX) {
 
