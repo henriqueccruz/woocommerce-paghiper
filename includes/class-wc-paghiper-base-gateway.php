@@ -1057,13 +1057,14 @@ class WC_Paghiper_Base_Gateway {
 		}
 
 		if ( $this->log ) {
+			$order_data = $order->get_meta('wc_paghiper_data');
 			wc_paghiper_add_log( 
 				$this->log, 
 				sprintf( 'Pedido #%s: Instruções de pagamento enviadas.', 
 					$order->get_id(), 
 					($this->isPIX ? 'PIX' : 'boleto'), 
 				),
-				['transaction_data' => $data]
+				['transaction_data' => $order_data]
 			);
 		}
 
