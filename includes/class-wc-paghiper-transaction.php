@@ -632,7 +632,7 @@ class WC_PagHiper_Transaction {
 
 			// Update order status if needed
 			$order_status = (strpos($this->order->get_status(), 'wc-') === false) ? 'wc-'.$this->order->get_status() : $this->order->get_status();
-			$waiting_status = (!empty($this->gateway_settings['set_status_when_waiting'])) ? $this->gateway_settings['set_status_when_waiting'] : 'on-hold';
+			$waiting_status = (!empty($this->gateway_settings['set_status_when_waiting'])) ? apply_filters('woo_paghiper_pending_status', $this->gateway_settings['set_status_when_waiting'], $this->order) : 'on-hold';
 
 			$this->order->update_meta_data( 'wc_paghiper_data', $data );
 			$this->order->save();
@@ -642,9 +642,25 @@ class WC_PagHiper_Transaction {
 
 			$this->order_data = $data;
 
-			if(strpos($order_status, 'wc-pending') !== false) { ## adaptacao para versões do php 7.4
+			if(strpos($order_status, $waiting_status) !== false) { ## adaptacao para versões do php 7.4
 				/* translators: %s: Transaction type. For use in order notes */
 				$this->order->update_status( $waiting_status, sprintf(__( 'PagHiper: %s gerado e enviado por e-mail.', 'woo-boleto-paghiper' ), (($this->isPIX) ? __('PIX', 'woo-boleto-paghiper') : __('Boleto', 'woo-boleto-paghiper')) ) );
+			} else {
+
+				if ( $this->log ) {
+					wc_paghiper_add_log( 
+						$this->log, 
+						sprintf( 
+							'Pedido #%s: Trigger de mudança de status.', 
+							$this->order_id, 
+						),
+						[
+							'current_status' 	=> $order_status,
+							'target_status'		=> $order_status
+						]
+					);
+				}
+
 			}
 
 			if ( $this->log ) {
