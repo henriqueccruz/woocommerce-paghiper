@@ -897,7 +897,11 @@ class WC_Paghiper_Base_Gateway {
 		// Ensure transaction is created and data is available
 		$barcode = $paghiperTransaction->printBarCode();
 
-		if($barcode && !$paghiperTransaction->is_payment_expired()) {
+		// Get a list of payable statuses and check if current order matches it.
+		$order_status = (strpos($order->get_status(), 'wc-') === false) ? 'wc-'.$order->get_status() : $order->get_status();
+		$is_order_payable = apply_filters('woo_paghiper_pending_status', $this->set_status_when_waiting, $order) == $order_status;
+
+		if($is_order_payable && $barcode && !$paghiperTransaction->is_payment_expired()) {
 
 			// Make variables available for the templates
 			$due_date_mode = $this->due_date_mode;
