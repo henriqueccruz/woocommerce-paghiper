@@ -139,10 +139,11 @@ async function copyTextToClipboard(text) {
  * @param {string} options.message A mensagem em texto ou HTML.
  * @param {string} [options.type='info'] O tipo de notificação (success, error, info, warning).
  * @param {number} [options.duration=3000] Duração em ms. Se 0, a notificação é fixa.
+ * @param {function} [options.onDismiss] Callback disparado quando a notificação é removida.
  * @returns {HTMLElement|null} O elemento da notificação criado ou null.
  */
 function showPhNotification(options) {
-  const { message, type = 'info', duration = 3000 } = options;
+  const { message, type = 'info', duration = 3000, onDismiss } = options;
   const container = document.getElementById('ph-reusable-notifications');
   if (!container) return null;
 
@@ -154,10 +155,15 @@ function showPhNotification(options) {
 
   if (duration > 0) {
     setTimeout(() => {
-      notification.classList.add('fade-out');
-      notification.addEventListener('animationend', () => {
-        notification.remove();
-      });
+      if (document.body.contains(notification)) {
+          notification.classList.add('fade-out');
+          notification.addEventListener('animationend', () => {
+            notification.remove();
+            if (typeof onDismiss === 'function') {
+                onDismiss();
+            }
+          });
+      }
     }, duration);
   }
 
@@ -187,6 +193,11 @@ async function refreshCheckoutContent() {
         if (newContent && currentContent) {
             currentContent.innerHTML = newContent.innerHTML;
             // Aqui, podemos reinicializar event listeners se necessário no futuro
+            const event = new Event('DOMContentLoaded', {
+                bubbles: true, // The event will bubble up through the DOM
+                cancelable: false // The event cannot be cancelled
+            });
+            document.dispatchEvent(event);
         } else {
             window.location.reload(); // Recarrega a página se a análise falhar
         }
@@ -201,6 +212,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const copyButton = document.querySelector('.ph-checkout-v2__copy-code-button');
   const qrContainer = document.querySelector('.ph-checkout-v2__qr-container');
   const textContainer = document.querySelector('.ph-checkout-v2__copy-code-container .textarea-container');
+  const iPaidButton = document.getElementById('ph-i-paid-button');
   
   const handleCopyClick = async () => {
     const textToCopy = document.querySelector('.ph-checkout-v2__copy-code-container .digitable_line_container')?.textContent.trim();
@@ -257,6 +269,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const paymentCheckInterval = setInterval(() => {
         
+        // Se estiver checando manualmente, CANCELA o intervalo automático definitivamente
+        // para evitar loops duplos de XHR e conflitos de UI.
+        if (isCheckingManually) {
+            iPaidButton.disabled = true;
+            clearInterval(paymentCheckInterval);
+            if (notificationElement && document.body.contains(notificationElement)) {
+                notificationElement.remove();
+                notificationElement = null;
+            }
+            return;
+        }
+
         if (!notificationElement || !document.body.contains(notificationElement)) {
 
             const loadingSpinner = '<span class="ph-notification-spinner"></span>';
@@ -265,7 +289,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 notificationElement = showPhNotification({
                     message: `${loadingSpinner} Aguardando confirmação do pagamento...`,
                     type: 'info',
-                    duration: 0 // Notificação Fixa
+                    duration: 0, // Notificação Fixa
                 });
             } else {
                 const textMessages = [
@@ -285,11 +309,18 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
+        // Desativa botão durante o XHR para evitar cliques concorrentes
+        if(iPaidButton) iPaidButton.disabled = true;
+
         jQuery.post(ph_checkout_params.ajax_url, {
             action: 'paghiper_check_payment_status',
             security: nonce,
             order_id: orderId
         }, function(response) {
+            
+            // Reativa botão após resposta
+            if(iPaidButton && !isCheckingManually) iPaidButton.disabled = false;
+
             if (response.success) {
                 if (response.data.status === 'paid') {
                     clearInterval(paymentCheckInterval);
@@ -323,9 +354,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     }, 1000);
                 }
             } else {
-                clearInterval(paymentCheckInterval);
+                // Em caso de erro, apenas logamos e permitimos que o próximo ciclo tente novamente
                 console.error('Erro ao verificar status do pagamento:', response.data.message);
             }
+        }).fail(function() {
+             // Garante que o botão volte a ficar ativo em caso de falha de rede
+             if(iPaidButton && !isCheckingManually) iPaidButton.disabled = false;
         });
 
     }, 10000);
@@ -336,10 +370,9 @@ document.addEventListener('DOMContentLoaded', () => {
       startPaymentStatusCheck();
   }
 
-  const iPaidButton = document.getElementById('ph-i-paid-button');
   if (iPaidButton) {
       iPaidButton.addEventListener('click', () => {
-          manualPaymentCheck();
+        manualPaymentCheck();
       });
   }
 
@@ -426,6 +459,12 @@ const manualPaymentCheck = () => {
     if (isCheckingManually) return;
     isCheckingManually = true;
 
+    let notificationElement = document.querySelector('.ph-notification.info');
+
+    if (notificationElement) {
+        notificationElement.classList.add('fade-out');
+    }
+
     const iPaidButton = document.getElementById('ph-i-paid-button');
     if (iPaidButton) iPaidButton.disabled = true;
 
@@ -467,6 +506,7 @@ const manualPaymentCheck = () => {
                 setTimeout(() => {
                     if (typeof refreshCheckoutContent === 'function') {
                         refreshCheckoutContent();
+
                     } else {
                         window.location.reload();
                     }
