@@ -381,8 +381,11 @@ class WC_Paghiper_Backend {
 		// Sets message template.
 		$message = $mailer->wrap_message( sprintf(__( 'Nova data de vencimento para o seu %s', 'woo_paghiper' ), ((($gateway_name !== 'paghiper_pix') ? 'boleto' : 'PIX'))), $main_message );
 
+		// Attachments
+		$attachments = apply_filters( 'woocommerce_email_attachments', array(), 'paghiper_resend_due_date', $order );
+
 		// Send email.
-		$mailer->send( $billing_email, $subject, $message, $headers, '' );
+		$mailer->send( $billing_email, $subject, $message, $headers, $attachments );
 	}
 
 	/**
