@@ -1006,69 +1006,15 @@ class WC_Paghiper_Base_Gateway {
 			return;
 		}
 
-		require_once WC_Paghiper::get_plugin_path() . 'includes/class-wc-paghiper-transaction.php';
-		$paghiperTransaction = new WC_PagHiper_Transaction( $order->get_id() );
-
-		$html = '<div class="woo-paghiper-boleto-details" style="text-align: center;">';
-		$html .= '<h2>' . __( 'Pagamento', 'woo-boleto-paghiper' ) . '</h2>';
-
-		$html .= '<p class="order_details">';
-
-		$message = $paghiperTransaction->printBarCode();
-
-		if($order_payment_method !== 'paghiper_pix') {
-
-			$transaction_due_date = new DateTime;
-			$transaction_due_date->setTimezone($this->timezone);
-			$transaction_due_date->modify( "+{$this->days_due_date} days" );
-
-			/* translators: %1$s: HTML opening tag, %2$s: HTML closing tag. */
-			$message .= sprintf( __( '%1$sAtenção!%2$s Você NÃO vai receber o boleto pelos Correios.', 'woo-boleto-paghiper' ), '<strong>', '</strong>' ) . '<br />';
-			$message .= __( 'Se preferir, você pode imprimir e pagar o boleto em qualquer agência bancária ou lotérica.', 'woo-boleto-paghiper' ) . '<br />';
-	
-			$html .= apply_filters( 'woo_paghiper_email_instructions', $message );
-	
-			/* translators: %s1: Billet URL, %s2: Billet button text. */
-			$html .= '<br />' . sprintf( '<a class="button alt" href="%s" target="_blank">%s</a>', esc_url( wc_paghiper_get_paghiper_url( $order->get_order_key() ) ), __( 'Veja o boleto completo &rarr;', 'woo-boleto-paghiper' ) ) . '<br />';
-	
-			/* translators: %s: Billet due date. */
-			$html .= '<strong style="font-size: 0.8em">' . sprintf( __( 'Data de Vencimento: %s.', 'woo-boleto-paghiper' ), $transaction_due_date->format('Y-m-d') ) . '</strong>';
-	
-			$html .= '</p>';
-			$html .= '</div>';
-
-		} else {
-			// Adiciona o contador regressivo para PIX em minutos no e-mail
-			if ($this->due_date_mode === 'minutes') {
-				$disable_gif = $this->gateway->get_option('disable_email_gif') === 'yes';
-				$is_over_24h = intval($this->due_date_value) > 1440; // 24h * 60m
-
-				if (!$disable_gif && !$is_over_24h) {
-					$order_data = $order->get_meta('wc_paghiper_data');
-					if (!empty($order_data['order_transaction_due_datetime'])) {
-						$due_datetime = new DateTime($order_data['order_transaction_due_datetime'], $this->timezone);
-						$timestamp = $due_datetime->getTimestamp();
-						
-						$countdown_url_base = wc_paghiper_assets_url('php/countdown.php');
-						$countdown_url = add_query_arg('order_due_time', $timestamp, $countdown_url_base);
-
-						$message .= '<p style="text-align:center;margin-top:15px;"><strong>Seu pedido expira em:</strong><br>';
-						$message .= '<img src="' . esc_url($countdown_url) . '" alt="Contador de Vencimento" /></p>';
-					}
-				}
-			}
-			$html .= apply_filters( 'woo_paghiper_email_instructions', $message );
-		}
+		$html = wc_paghiper_get_email_instructions_html( $order );
 
 		if ( $this->log ) {
-			$order_data = $order->get_meta('wc_paghiper_data');
 			wc_paghiper_add_log( 
 				$this->log, 
 				sprintf( 'Pedido #%s: Instruções de pagamento enviadas.', 
 					$order->get_id(), 
 					($this->isPIX ? 'PIX' : 'boleto'), 
-				),
-				['transaction_data' => $order_data]
+				)
 			);
 		}
 

@@ -372,15 +372,11 @@ class WC_Paghiper_Backend {
 		$headers = array();
 		$headers[] = "Content-Type: text/html\r\n";
 
-		// Billet re-emission
-		require_once WC_Paghiper::get_plugin_path() . 'includes/class-wc-paghiper-transaction.php';
+		// Construct Intro Message
+		$intro_message = '<p>' . sprintf( __( 'A data de vencimento do seu %s foi atualizada para: %s', 'woo_paghiper' ), ((($gateway_name !== 'paghiper_pix') ? 'boleto' : 'PIX')), '<code>' . $expiration_date . '</code>' ) . '</p>';
 
-		$paghiperTransaction = new WC_PagHiper_Transaction( $order->get_id() );
-
-		// Body message.
-		$main_message = '<p>' . sprintf( __( 'A data de vencimento do seu %s foi atualizada para: %s', 'woo_paghiper' ), ((($gateway_name !== 'paghiper_pix') ? 'boleto' : 'PIX')), '<code>' . $expiration_date . '</code>' ) . '</p>';
-		$main_message .= $paghiperTransaction->printBarCode();
-		$main_message .= '<p>' . sprintf( '<a class="button" href="%s" target="_blank">%s</a>', esc_url( wc_paghiper_get_paghiper_url( $order->get_order_key() ) ), __( 'Pagar o boleto &rarr;', 'woo_paghiper' ) ) . '</p>';
+		// Generate Body using centralized helper
+		$main_message = wc_paghiper_get_email_instructions_html( $order, $intro_message );
 
 		// Sets message template.
 		$message = $mailer->wrap_message( sprintf(__( 'Nova data de vencimento para o seu %s', 'woo_paghiper' ), ((($gateway_name !== 'paghiper_pix') ? 'boleto' : 'PIX'))), $main_message );
