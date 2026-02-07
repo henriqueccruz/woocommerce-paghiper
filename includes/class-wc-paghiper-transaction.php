@@ -570,7 +570,7 @@ class WC_PagHiper_Transaction {
 			];
 
 			if($this->isPIX && array_key_exists('minutes_due_date', $transaction_data)) {
-				$transaction_base_data['current_transaction_minutes_due_date'] = $transaction_data['minutes_due_date']
+				$transaction_base_data['current_transaction_minutes_due_date'] = $transaction_data['minutes_due_date'];
 			}
 
 			if($this->isPIX) {
