@@ -44,27 +44,58 @@ if(!$digitable_line || !$barcode_url) {
 $due_date_display_str = '';
 $due_date_timer_str = '';
 $gateway_settings = $paghiperTransaction->_get_gateway_settings();
-$due_date_mode_pix = isset($gateway_settings['due_date_mode']) ? $gateway_settings['due_date_mode'] : 'days';
+
+if(array_key_exists('current_transaction_minutes_due_date', $order_data)) {
+    $original_minutes = intval($order_data['current_transaction_minutes_due_date']);
+    $due_date_mode_pix = 'minutes';
+}
+
+if(!isset($due_date_mode_pix)) {
+    $due_date_mode_pix = isset($gateway_settings['due_date_mode']) ? $gateway_settings['due_date_mode'] : 'days';
+}
 
 if ($gateway_id === 'paghiper_pix' && $due_date_mode_pix === 'minutes') {
+
+    if(!isset($original_minutes)) {
+        $original_minutes = intval($gateway_settings['due_date_value']);
+    }
+
     // Minute-based PIX
-    $original_minutes = intval($gateway_settings['due_date_value']);
+    if(array_key_exists('current_transaction_minutes_due_date', $order_data)) {
+        $original_minutes = intval($order_data['current_transaction_minutes_due_date']);
+    } else {
+        $original_minutes = intval($gateway_settings['due_date_value']);
+    }
+
     $due_date_timer_str = $original_minutes . 'min';
-    
-    $order_datetime = $order->get_date_created();
-    if ($order_datetime) {
-        $order_datetime->setTimezone($timezone);
-        $due_datetime = clone $order_datetime;
-        $due_datetime->modify("+{$original_minutes} minutes");
-        
-        $timestamp = $due_datetime->getTimestamp();
-        $date_part = wp_date( 'j \d\e F \d\e Y', $timestamp, $timezone );
-        $time_part = wp_date( 'H:i', $timestamp, $timezone );
+
+    if(array_key_exists('order_transaction_due_datetime', $order_data)) {
+
+        $order_due_date = DateTime::createFromFormat( 'Y-m-d H:i:s', $order_data['order_transaction_due_datetime'], $timezone );
+        $order_due_timestamp = $order_due_date->getTimestamp();
+        $date_part = wp_date( 'j \d\e F \d\e Y', $order_due_timestamp, $timezone );
+        $time_part = wp_date( 'H:i', $order_due_timestamp, $timezone );
         $due_date_display_str = $date_part . ', ' . $time_part;
 
     } else {
-        // Fallback if order date is not available
-        $due_date_display_str = $paghiperTransaction->_get_due_date();
+
+        $order_datetime = $order->get_date_created();
+        
+        if ($order_datetime) {
+            $order_datetime->setTimezone($timezone);
+            $due_datetime = clone $order_datetime;
+            $due_datetime->modify("+{$original_minutes} minutes");
+            
+            $timestamp = $due_datetime->getTimestamp();
+            $date_part = wp_date( 'j \d\e F \d\e Y', $timestamp, $timezone );
+            $time_part = wp_date( 'H:i', $timestamp, $timezone );
+            $due_date_display_str = $date_part . ', ' . $time_part;
+
+        } else {
+            // Fallback if order date is not available
+            $due_date_display_str = $paghiperTransaction->_get_due_date();
+        }
+
     }
 } else {
     // Day-based Billet or PIX
