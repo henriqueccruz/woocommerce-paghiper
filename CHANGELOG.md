@@ -7,9 +7,11 @@
 #### Melhorias
 * Checagem de credenciais direto pelo admin
 * Nova experiencia de UX/UI do painel de edição de pedidos
+* Nova estrutura de pastas dentro de wp-content/uploads para melhor organização
 
-#### Modificações
-* Nova estrutura de pastas dentro de wp-content/uploads
+#### Fixes
+* Instruções por e-mail incorretas ao redefinir data/hora de transação no painel
+* Boletos PDF não se anexavam ao e-mail de novo pedido
 
 ### 2.5.3
 
