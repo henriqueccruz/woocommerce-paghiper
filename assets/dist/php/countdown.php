@@ -50,7 +50,7 @@ if ($remaining_seconds <= 0) {
 }
 
 // Check for a _plus suffix file for compatibility with older logic.
-$plus_filename = 'countdown_' . $remaining_seconds . '_plus.gif';
+$plus_filename = 'countdown_' . round($remaining_seconds, -1) . '_plus.gif';
 if(file_exists($base_path . '/' . $bundle_index . '/' . $plus_filename)) {
     $filename = $plus_filename;
 }
