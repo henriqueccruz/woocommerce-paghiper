@@ -192,7 +192,7 @@ class WC_PagHiper_Transaction {
 						$this->invalid_reason = 'different_due_date';
 		
 						if ( $this->log ) {
-							$log_message = 'Pedido #%s: Data de vencimento da transação não bate com a informada no pedido. Uma novo %s será gerada.'.PHP_EOL;
+							$log_message = 'Pedido #%s: Data de vencimento da transação não bate com a informada no pedido. Um novo %s será gerada.'.PHP_EOL;
 							$log_message .= 'Data de vencimento esperada é %s, data de vencimento recebida: %s';
 							wc_paghiper_add_log(
 								$this->log, 
@@ -215,7 +215,7 @@ class WC_PagHiper_Transaction {
 					// Logica de vencimento não bateu para PIX
 					// Como não temos current_transaction_due_datetime, apenas marcamos como diferente
 					if ( $this->log ) {
-						$log_message = 'Pedido #%s: Data de vencimento da transação não bate com a informada no pedido. Uma novo %s será gerada.'.PHP_EOL;
+						$log_message = 'Pedido #%s: Data de vencimento da transação não bate com a informada no pedido. Um novo %s será gerada.'.PHP_EOL;
 						wc_paghiper_add_log( 
 							$this->log,
 							sprintf( 
