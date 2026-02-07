@@ -1,7 +1,7 @@
 /*import { __ } from '@wordpress/i18n';
 import { useState, useEffect } from '@wordpress/element';*/
 const { __ } = window.wp.i18n;
-const { useState, useEffect } = window.wp.element;
+const { useState, useEffect, useRef } = window.wp.element;
 
 import { useElementOptions } from './use-element-options';
 import { isCPF, isCNPJ } from 'validation-br';
@@ -27,21 +27,42 @@ export const InlineTaxIdField = ( {
     const [ isComplete, setIsComplete ] = useState( false );
 	const [ fieldLabel, setFieldLabel ] = useState(__('CPF do Pagador', 'woo-boleto-paghiper'));
     const [ fieldInput, setFieldInput ] = useState( value || '' );
+    const inputRef = useRef(null);
+
 	const { options, isActive, isFocus, onActive, error, setError } = useElementOptions( {
 		hideIcon: true,
 	} );
+
+    // Helper to format value manually (syncs React state with Mask expectation)
+    const formatTaxId = (val) => {
+        if (!val) return '';
+        const clean = val.toString().replace(/\D/g, '');
+        if (clean.length > 11) {
+            // CNPJ Mask: 00.000.000/0000-00
+            return clean.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2}).*/, '$1.$2.$3/$4-$5');
+        } else {
+            // CPF Mask: 000.000.000-00
+            return clean.replace(/^(\d{3})(\d{3})(\d{3})(\d{2}).*/, '$1.$2.$3-$4');
+        }
+    }
 	
-    // Sync internal state with prop value (only if actual numbers changed)
+    // Sync internal state with prop value (handling mask formatting)
     useEffect(() => {
         if ( value !== undefined ) {
             const cleanPropValue = value.toString().replace(/\D/g, '');
             const cleanInternalValue = fieldInput.toString().replace(/\D/g, '');
 
+            // Only update if the numbers are actually different
             if ( cleanPropValue !== cleanInternalValue ) {
-                 setFieldInput( value );
+                 setFieldInput( formatTaxId(cleanPropValue) );
             }
         }
     }, [ value ]);
+
+    // Keep isEmpty in sync with fieldInput reactively
+    useEffect(() => {
+        setIsEmpty( !fieldInput );
+    }, [ fieldInput ]);
 
     // Handle external error messages
     useEffect(() => {
@@ -54,9 +75,22 @@ export const InlineTaxIdField = ( {
     const handleChange = ( event ) => {
         const newValue = event.target.value;
         setFieldInput( newValue );
-        setIsEmpty( !newValue );
         setError( '' ); // Reset error state on change
         onChange( event );
+    }
+
+    // Handle Autocomplete/Paste cleanup on Blur
+    const handleBlur = () => {
+        onActive( !fieldInput, false );
+        
+        if ( inputRef.current ) {
+            const currentVal = inputRef.current.value;
+            if ( currentVal !== fieldInput ) {
+                const formatted = formatTaxId(currentVal);
+                setFieldInput(formatted);
+                onChange({ target: { value: formatted } });
+            }
+        }
     }
 
     useEffect(() => {
@@ -65,9 +99,7 @@ export const InlineTaxIdField = ( {
         // Reset states before validation
         setIsInvalid(false);
         setIsComplete(false);
-        // setError(''); // Don't clear error here, let the user type. Only clear if valid? 
-        // Logic moved: Validation checks run below.
-
+        
         if(cleanInput.length > 11) {
             setFieldLabel(__('CNPJ do Pagador', 'woo-boleto-paghiper'));
         } else {
@@ -117,25 +149,24 @@ export const InlineTaxIdField = ( {
 
     }, [fieldInput, isFocus, isEmpty]);
 
-    const taxIdMaskBehavior = (val, e) => {
+    const taxIdMaskBehavior = (val) => {
         return val.replace(/\D/g, '').length > 11 ? '00.000.000/0000-00' : '000.000.000-009';
     }
 
-    // Initialize mask everytime we render the component
+    // Initialize mask using ref
     useEffect(() => {
-
-        if(typeof jQuery('.paghiper_tax_id').mask === "function") {
-
-            jQuery('.paghiper_tax_id').mask(taxIdMaskBehavior, {
+        if(inputRef.current && typeof jQuery(inputRef.current).mask === "function") {
+            const $input = jQuery(inputRef.current);
+            
+            $input.mask(taxIdMaskBehavior, {
                 onKeyPress: function(val, e, field, options) {
                     field.mask(taxIdMaskBehavior.apply({}, arguments), options);
                 }
             });
-
         } else {
-            console.log('Paghiper block failed to initialize TaxID mask')
+            // Fallback logging or global init if ref fails (unlikely)
+             console.log('Paghiper block: initializing mask via ref');
         }
-	
     }, [])
 
 	return (
@@ -143,11 +174,12 @@ export const InlineTaxIdField = ( {
             <div className="wc-block-components-form">
                 <div className={"wc-block-gateway-container wc-block-components-text-input wc-inline-tax-id-element paghiper-taxid-fieldset" + (isActive || !isEmpty ? ' is-active' : '') + (isInvalid ? ' has-error invalid' : '')}>
                     <input 
+                        ref={inputRef}
                         type="text"
                         id={`wc-paghiper-inline-tax-id-element-${gatewayName}`}
                         name={"_" + gatewayName + "_cpf_cnpj"}
                         className={ baseTextInputStyles + (isEmpty ? ' empty Input--empty' : '') + (isInvalid ? ' has-error invalid' : '') + (isComplete ? ' valid' : '')}
-                        onBlur={ () => onActive( isEmpty, false ) }
+                        onBlur={ handleBlur }
                         onFocus={ () => onActive( isEmpty, true ) }
                         onChange={ handleChange }
                         aria-label={ fieldLabel }
