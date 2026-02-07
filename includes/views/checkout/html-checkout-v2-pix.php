@@ -168,6 +168,8 @@ if ($gateway_id === 'paghiper_pix' && $due_date_mode_pix === 'minutes') {
                                     // Aciona a atualização do conteúdo da div
                                     if (typeof refreshCheckoutContent === 'function') {
                                         refreshCheckoutContent();
+                                    } else {
+                                        window.location.reload();
                                     }
                                 }, 10000); // 10 segundos de espera
                             }
