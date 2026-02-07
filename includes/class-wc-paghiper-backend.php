@@ -49,6 +49,10 @@ class WC_Paghiper_Backend {
 
 		} else {
 
+			if(!array_key_exists('page', $_GET) || !array_key_exists('page', $_GET)) {
+				return;
+			}
+
 			$current_page 	= $_GET['page'];
 			$current_action = $_GET['action'];
 
