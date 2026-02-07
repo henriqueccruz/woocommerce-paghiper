@@ -265,7 +265,7 @@ class WC_Paghiper_Backend {
 				$html .= '<input type="hidden" id="woo_paghiper_expiration_date" name="woo_paghiper_expiration_date" value="" />';
 				$html .= '</div>';
 				$html .= '<div id="paghiper-due-date-warning" class="notice notice-warning inline" style="display: none; margin: 10px 0;"><p></p></div>';
-				$html .= '<span class="description">' . __( 'Use os controles para definir a nova data e hora de vencimento. Ao configurar, o PIX é re-enviado ao cliente.', 'woo_boleto-paghiper' ) . '</span>';
+				$html .= '<span class="description">' . sprintf(__( 'Use os controles para definir a nova data e hora de vencimento. Ao configurar, o %s é re-enviado ao cliente.', 'woo_boleto-paghiper' ), (($gateway_name !== 'paghiper_pix') ? __('boleto') : __('PIX')) ) . '</span>';
 			}
 
 						$html .= '<div id="ph-reusable-notifications"></div>';
