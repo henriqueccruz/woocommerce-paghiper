@@ -42,10 +42,10 @@ class WC_PagHiper_Transaction {
 		$this->order_status = (strpos($this->order->get_status(), 'wc-') === false) ? 'wc-'.$this->order->get_status() : $this->order->get_status();
 
 		// Pega a configuração atual do plug-in.
-		$this->gateway_id = $this->order->get_payment_method();
-		$this->gateway_name  = ($this->gateway_id !== 'paghiper_pix') ? 'boleto' : 'PIX';
+		$this->gateway_id 		= $this->order->get_payment_method();
+		$this->gateway_name  	= ($this->gateway_id !== 'paghiper_pix') ? 'boleto' : 'PIX';
+		$this->isPIX 			= ($this->gateway_id == 'paghiper_pix') ? TRUE : FALSE;
 		$this->gateway_settings = ($this->isPIX) ? get_option( 'woocommerce_paghiper_pix_settings' ) : get_option( 'woocommerce_paghiper_billet_settings' );
-		$this->isPIX = ($this->gateway_id == 'paghiper_pix') ? TRUE : FALSE;
 
 		// Inicializa logs, caso ativados
 		$this->log = wc_paghiper_initialize_log( $this->gateway_settings[ 'debug' ] );
