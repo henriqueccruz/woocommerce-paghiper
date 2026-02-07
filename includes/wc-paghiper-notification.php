@@ -94,7 +94,7 @@ function woocommerce_paghiper_valid_ipn_request($return, $order_no, $settings) {
                     $order->add_order_note( __( 'PagHiper: Post de notificação recebido. Aguardando compensação do boleto.' , 'woo-boleto-paghiper' ) );
                 }*/
 			    /* translators: %s: Transaction type. May be PIX or billet. For use in order notes */
-                $order->add_order_note( sprintf(__( 'PagHiper: Novo %s emitido. Aguardando compensação.', 'woo-boleto-paghiper' ),$gateway_name) );
+                $order->add_order_note( sprintf(__( 'PagHiper: Status do %s: Aguardando compensação.', 'woo-boleto-paghiper' ),$gateway_name) );
                 if ( $paghiper_log ) {
                     wc_paghiper_add_log( $paghiper_log, sprintf('Pedido #%s: %s emitido com sucesso.', $order->get_id(), ucfirst($gateway_name)) );
                 }
