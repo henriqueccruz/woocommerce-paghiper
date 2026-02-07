@@ -689,7 +689,7 @@ class WC_PagHiper_Transaction {
 	
 				$uploads = wp_upload_dir();
 				$upload_dir = $uploads['basedir'];
-				$upload_dir = $upload_dir . '/paghiper';
+				$upload_dir = $upload_dir . '/paghiper/billets';
 	
 				$billet_pdf_file = $upload_dir.'/'.$transaction_id.'.pdf';
 
