@@ -580,7 +580,8 @@ class WC_PagHiper_Transaction {
 						wc_paghiper_add_log(
 							$this->log,
 							sprintf( 'Erro: %s', 'Não foi possível emitir seu PIX' ),
-							['metadata' => $this->order_data, 'api_response' => $response]
+							['metadata' => $this->order_data, 'api_response' => $response],
+							WC_Log_Levels::ERROR
 						);
 					}
 
@@ -603,7 +604,8 @@ class WC_PagHiper_Transaction {
 						wc_paghiper_add_log(
 							$this->log,
 							sprintf( 'Erro: %s', 'Não foi possível emitir seu boleto' ),
-							['metadata' => $this->order_data, 'api_response' => $response]
+							['metadata' => $this->order_data, 'api_response' => $response],
+							WC_Log_Levels::CRITICAL
 						);
 					}
 
@@ -717,7 +719,7 @@ class WC_PagHiper_Transaction {
 	
 					} elseif( is_wp_error( $billet_download ) ) {
 						if ( $this->log ) {
-							wc_paghiper_add_log( $this->log, sprintf( 'Erro: %s', $billet_download->get_error_message() ) );
+							wc_paghiper_add_log( $this->log, sprintf( 'Erro: %s', $billet_download->get_error_message() ), [], WC_Log_Levels::ERROR );
 						}
 					}
 	
@@ -735,7 +737,8 @@ class WC_PagHiper_Transaction {
 					[
 						'metadata' => $this->order_data,
 						'api_response' => isset($response) ? $response : null
-					]
+					],
+					WC_Log_Levels::CRITICAL
 				);
 			}
 		}
@@ -768,7 +771,7 @@ class WC_PagHiper_Transaction {
 		} elseif( is_wp_error( $response ) ) {
 			$error = $response->get_error_message();
 			if ( $this->log ) {
-				wc_paghiper_add_log( $this->log, sprintf( 'Erro: %s', $error ) );
+				wc_paghiper_add_log( $this->log, sprintf( 'Erro: %s', $error ), [], WC_Log_Levels::ERROR );
 			}
 		} else {
 			if ( $this->log ) {

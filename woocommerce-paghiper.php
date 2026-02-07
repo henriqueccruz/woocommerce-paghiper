@@ -250,7 +250,7 @@ class WC_Paghiper {
 			} catch (Exception $e) {
 
 				if ( $this->log ) {
-					wc_paghiper_add_log( $this->log, sprintf( 'Erro: %s', $e->getMessage() ) );
+					wc_paghiper_add_log( $this->log, sprintf( 'Erro: %s', $e->getMessage() ), [], WC_Log_Levels::CRITICAL );
 				}
 
 			}
@@ -638,14 +638,25 @@ class WC_Paghiper {
 						$attachments[] = $billet_pdf_file;
 					}
 
-					if ( $this->log ) {
-						wc_paghiper_add_log( $this->log, sprintf( 'Paghiper: Boleto anexo com sucesso. Template: %s', $email_id ) );
+						if ( $this->log ) {
+							wc_paghiper_add_log( 
+								$this->log, 
+								sprintf( 'Pedido #%s: Não foi possível anexar o boleto ao e-mail. Template: %s', $order->get_id(), $email_id ),
+								['attached_file' => $billet_pdf_file],
+								WC_Log_levels::ERROR
+							);
+						}
 					}
 
 				} else {
 
 					if ( $this->log ) {
-						wc_paghiper_add_log( $this->log, sprintf( 'Paghiper: Transação não gerada ainda. Template: %s', $email_id ) );
+						wc_paghiper_add_log(
+							$this->log,
+							sprintf( 'Paghiper: Transação não gerada ainda. Template: %s', $email_id ),
+							['order_data' => $order_data],
+							WC_Log_levels::ERROR
+						);
 					}
 
 				}
@@ -653,7 +664,7 @@ class WC_Paghiper {
 			} catch(Exception $e) {
 
 				if ( $this->log ) {
-					wc_paghiper_add_log( $this->log, sprintf( 'Erro: %s', $e->getMessage() ) );
+					wc_paghiper_add_log( $this->log, sprintf( 'Erro: %s', $e->getMessage() ), [], WC_Log_Levels::CRITICAL );
 				}
 
 			}

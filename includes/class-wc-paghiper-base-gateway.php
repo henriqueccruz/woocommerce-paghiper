@@ -772,7 +772,7 @@ class WC_Paghiper_Base_Gateway {
 						$order_id, 
 						($this->isPIX ? 'PIX' : 'boleto'), 
 						var_export($transaction, true) 
-					) 
+					), [], WC_Log_Levels::ERROR
 				);
 			}
             

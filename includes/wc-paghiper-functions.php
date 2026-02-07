@@ -136,7 +136,7 @@ function wc_paghiper_check_sdk_includes( $log = false ) {
 	if (!\function_exists('PagHiperSDK\\GuzzleHttp\\uri_template') || !\function_exists('PagHiperSDK\\GuzzleHttp\\choose_handler')) {
 
 		if($log) {
-			wc_paghiper_add_log( $log, sprintf( 'Erro: O PHP SDK não incluiu todos os arquivos necessários por alguma questão relacionada a PSR-4 ou por configuração de ambiente.' ) );
+			wc_paghiper_add_log( $log, sprintf( 'Erro: O PHP SDK não incluiu todos os arquivos necessários por alguma questão relacionada a PSR-4 ou por configuração de ambiente.' ), [], WC_Log_Levels::CRITICAL );
 		}
 
 		require_once WC_Paghiper::get_plugin_path() . 'includes/paghiper-php-sdk/build/vendor/ralouphie/getallheaders/src/getallheaders.php';
